@@ -34,6 +34,7 @@ import type {
 } from "@shared/types/playlist";
 import type { CjkTransformMode } from "@shared/types/opencc";
 import type { DownloadTrackIdentity } from "@shared/types/download";
+import type { AppleMusicSearchParams } from "@shared/types/appleMusic";
 
 /** 订阅主进程推送的事件 */
 const subscribe = <T>(channel: string, callback: (data: T) => void): (() => void) => {
@@ -197,6 +198,10 @@ const api = {
       ipcRenderer.send(`player:queue-response:${requestId}`, snapshot),
     // 订阅主进程推送的播放事件
     onEvent: (callback: (event: unknown) => void) => subscribe("player:event", callback),
+  },
+  appleMusic: {
+    // 按分类搜索 Apple Music 目录（iTunes Search 代理）
+    search: (params: AppleMusicSearchParams) => ipcRenderer.invoke("appleMusic:search", params),
   },
   system: {
     installType: getInstallType(),

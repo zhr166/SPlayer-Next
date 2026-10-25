@@ -23,6 +23,7 @@ import { registerAiModelIpc } from "./aiModel";
 import { registerPlaylistIpc } from "./playlist";
 import { registerRecognitionIpc } from "./recognition";
 import { registerOpenccIpc } from "./opencc";
+import { registerAppleMusicIpc } from "./appleMusic";
 
 /**
  * 注册所有 IPC 处理
@@ -46,6 +47,7 @@ export const registerIpcHandlers = (onStartupComplete: () => void): void => {
   registerStreamingIpc();
   registerPlaylistIpc();
   registerRecognitionIpc();
+  registerAppleMusicIpc();
   registerLastfmIpc();
   registerCacheIpc();
   registerDownloadIpc();

@@ -160,6 +160,7 @@ export const useSettingsStore = defineStore(
       showLyricInBar: true,
       preloadNextTrack: false,
       searchPlayBehavior: "current",
+      appleMusicStorefront: "us",
       rememberDeviceVolume: false,
       transitionMode: "none",
       transitionPreference: "standard",

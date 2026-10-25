@@ -80,6 +80,7 @@ export const getCollectionShareUrl = (
       streaming: null,
       local: null,
       plugin: null,
+      appleMusic: null,
     },
     playlist: {
       netease: `https://music.163.com/#/playlist?id=${collection.id}`,
@@ -88,6 +89,7 @@ export const getCollectionShareUrl = (
       streaming: null,
       local: null,
       plugin: null,
+      appleMusic: null,
     },
     radio: {
       netease: `https://music.163.com/#/djradio?id=${collection.id}`,
@@ -96,6 +98,7 @@ export const getCollectionShareUrl = (
       streaming: null,
       local: null,
       plugin: null,
+      appleMusic: null,
     },
     cloud: {
       netease: null,
@@ -104,6 +107,7 @@ export const getCollectionShareUrl = (
       streaming: null,
       local: null,
       plugin: null,
+      appleMusic: null,
     },
   };
   return urls[collection.type]?.[collection.source] ?? null;

@@ -401,7 +401,8 @@
       "albums": "Albums",
       "artists": "Artists",
       "playlists": "Playlists"
-    }
+    },
+    "appleMusicPreviewOnly": "Apple Music source plugin is not installed; only 30-second previews are available"
   },
   "streaming": {
     "hint": "Connect to Media Source",

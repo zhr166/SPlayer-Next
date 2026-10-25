@@ -120,6 +120,8 @@ export interface Track {
   originalId?: string;
   /** 流媒体账号或地址变更后的媒体身份代次 */
   serverRevision?: number;
+  /** 试听地址（仅 source==='appleMusic' 且未安装音源插件时使用） */
+  previewUrl?: string;
   /** 标题 */
   title: string;
   /** 注释/副标题 */

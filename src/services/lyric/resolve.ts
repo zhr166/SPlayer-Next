@@ -99,6 +99,8 @@ const PLATFORM_MAIN_FORMATS: Record<Platform, LyricFormat[]> = {
   netease: ["yrc", "lrc"],
   qqmusic: ["qrc", "lrc"],
   kugou: ["krc", "lrc"],
+  // Apple Music 目录曲目没有平台歌词通道，歌词走内置 Apple Music TTML 服务
+  appleMusic: [],
 };
 
 /**

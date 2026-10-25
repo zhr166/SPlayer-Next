@@ -298,6 +298,8 @@ export interface PlayerSettings {
   transitionPreference: TransitionPreference;
   /** 歌曲列表点击播放行为 */
   songListPlayBehavior: PlayBehavior;
+  /** Apple Music 搜索使用的商店地区（两位国家码） */
+  appleMusicStorefront: string;
   /** 是否启用音乐频谱可视化 */
   enableSpectrum: boolean;
   /** 频谱单条宽度（px） */

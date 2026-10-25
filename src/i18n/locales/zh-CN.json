@@ -389,7 +389,8 @@
       "albums": "专辑",
       "artists": "歌手",
       "playlists": "歌单"
-    }
+    },
+    "appleMusicPreviewOnly": "未安装 Apple Music 音源插件，当前仅支持 30 秒试听"
   },
   "streaming": {
     "hint": "连接到媒体源",

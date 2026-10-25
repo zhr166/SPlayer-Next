@@ -16,6 +16,7 @@ const PLATFORM_TO_PLUGIN_SOURCE: Record<Platform, string> = {
   netease: "wy",
   qqmusic: "tx",
   kugou: "kg",
+  appleMusic: "am",
 };
 
 /** 解析选项 */
@@ -299,6 +300,14 @@ export const resolveTrackSource = async (
     const localPath = track.cueAudioPath ?? track.path;
     if (!localPath) reportLoadError(ErrorCode.FILE_NOT_FOUND, options);
     return localPath ? { source: localPath, fromCache: false, provider: "local" } : null;
+  }
+  // Apple Music 目录曲目：装音量插件时搜索层会构造为 plugin 曲目，走到这里只剩 30 秒试听
+  if (track.source === "appleMusic") {
+    if (!track.previewUrl) {
+      reportLoadError(ErrorCode.URL_RESOLVE_FAILED, options);
+      return null;
+    }
+    return { source: track.previewUrl, fromCache: false, provider: "trial" };
   }
   const settings = useSettingsStore();
   const songLevel = settings.player.songLevel;
