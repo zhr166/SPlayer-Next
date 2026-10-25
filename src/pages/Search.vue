@@ -47,10 +47,15 @@ const activeTab = ref<TabKey>("songs");
 const keyword = ref("");
 
 /** 当前是 Apple Music 内置搜索（只有单曲） */
-const isAppleMusicTab = computed(() => !isPluginTab.value && status.searchPlatform === "appleMusic");
+const isAppleMusicTab = computed(
+  () => !isPluginTab.value && status.searchPlatform === "appleMusic",
+);
 
 /** 没有音源插件时只能试听，给出提示 */
 const appleMusicPreviewOnly = computed(() => isAppleMusicTab.value && !hasAppleMusicPlugin());
+
+/** 平台切换按标签数量算宽度：STabs 是 w-full 均分，写死宽度会把 4 个平台挤成一坨 */
+const platformTabsWidth = computed(() => `${platformTabs.value.length * 54 + 8}px`);
 
 const tabs = computed(() =>
   isAppleMusicTab.value
@@ -393,10 +398,10 @@ const playbackContext = computed<PlaybackContext>(() => ({
           </span>
         </h1>
         <!-- 平台切换 -->
-        <div class="shrink-0 flex items-center">
+        <div class="shrink-0 flex items-center gap-2">
           <div
             class="transition-[width] duration-200 ease-out motion-reduce:transition-none"
-            :class="pluginSources.length ? 'w-56' : 'w-40'"
+            :style="{ width: platformTabsWidth }"
           >
             <STabs
               :model-value="selectedPlatform"
@@ -407,29 +412,25 @@ const playbackContext = computed<PlaybackContext>(() => ({
             />
           </div>
           <Transition name="plugin-source">
-            <div v-if="isPluginTab" class="ml-2 w-40 shrink-0">
-              <div class="w-40">
-                <SSelect
-                  :model-value="selectedSource"
-                  :options="sourceOptions"
-                  :placeholder="t('search.pluginSource')"
-                  round
-                  @update:model-value="onPluginSourceSwitch"
-                />
-              </div>
+            <div v-if="isPluginTab" class="w-40 shrink-0">
+              <SSelect
+                :model-value="selectedSource"
+                :options="sourceOptions"
+                :placeholder="t('search.pluginSource')"
+                round
+                @update:model-value="onPluginSourceSwitch"
+              />
             </div>
           </Transition>
           <Transition name="plugin-source">
-            <div v-if="isAppleMusicTab" class="ml-2 w-28 shrink-0">
-              <div class="w-28">
-                <SSelect
-                  :model-value="settings.player.appleMusicStorefront"
-                  :options="STOREFRONT_OPTIONS"
-                  :placeholder="t('search.storefront')"
-                  round
-                  @update:model-value="onStorefrontSwitch"
-                />
-              </div>
+            <div v-if="isAppleMusicTab" class="w-24 shrink-0">
+              <SSelect
+                :model-value="settings.player.appleMusicStorefront"
+                :options="STOREFRONT_OPTIONS"
+                :placeholder="t('search.storefront')"
+                round
+                @update:model-value="onStorefrontSwitch"
+              />
             </div>
           </Transition>
         </div>
