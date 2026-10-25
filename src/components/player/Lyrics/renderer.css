@@ -173,19 +173,19 @@
 
 .lp-main:lang(zh),
 .lp-main:lang(yue) {
-  font-family: var(--lyric-font-zh, inherit);
+  font-family: "SPlayerLyricMixed", var(--lyric-font-zh, inherit);
 }
 
 .lp-main:lang(ja) {
-  font-family: var(--lyric-font-ja, inherit);
+  font-family: "SPlayerLyricMixed", var(--lyric-font-ja, inherit);
 }
 
 .lp-main:lang(ko) {
-  font-family: var(--lyric-font-ko, inherit);
+  font-family: "SPlayerLyricMixed", var(--lyric-font-ko, inherit);
 }
 
 .lp-main:lang(und-Latn) {
-  font-family: var(--lyric-font-latin, inherit);
+  font-family: "SPlayerLyricMixed", var(--lyric-font-latin, inherit);
 }
 
 /* ---- 副文本（翻译/音译） ---- */
@@ -195,6 +195,29 @@
   line-height: var(--lp-sub-line-height, 1.5em);
   opacity: calc(var(--pass, 1) * var(--lp-sub-opacity, 0.3));
   color: var(--lp-sub-color, inherit);
+}
+
+/* 副文本同样按语种取字体：谚文走韩文字体、假名走日文字体，汉字跟行语言 */
+.lp-content:lang(zh) > .lp-sub,
+.lp-content:lang(yue) > .lp-sub {
+  font-family: "SPlayerLyricMixed", var(--lyric-font-zh, inherit);
+}
+
+.lp-content:lang(ja) > .lp-sub {
+  font-family: "SPlayerLyricMixed", var(--lyric-font-ja, inherit);
+}
+
+.lp-content:lang(ko) > .lp-sub {
+  font-family: "SPlayerLyricMixed", var(--lyric-font-ko, inherit);
+}
+
+.lp-content:lang(und-Latn) > .lp-sub {
+  font-family: "SPlayerLyricMixed", var(--lyric-font-latin, inherit);
+}
+
+/* 音译是拉丁转写：整体跟西文字体，行内谚文/假名仍由混排字体分流 */
+.lp-content > .lp-sub.lp-sub-roman {
+  font-family: "SPlayerLyricMixed", var(--lyric-font-latin, inherit);
 }
 
 /* ---- 间奏圆点 ---- */

@@ -116,7 +116,8 @@ export const buildLineElements = (
     const appendPronunciation = (): void => {
       if (!options.showRomanization || !romanization) return;
       const subDiv = document.createElement("div");
-      subDiv.className = "lp-sub";
+      // 音译是拉丁转写，单独打标以便按西文字体渲染
+      subDiv.className = "lp-sub lp-sub-roman";
       subDiv.textContent = romanization;
       contentDiv.appendChild(subDiv);
     };

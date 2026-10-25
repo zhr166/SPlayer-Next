@@ -564,19 +564,19 @@ defineExpose({
 
 :deep(:lang(zh)),
 :deep(:lang(yue)) {
-  font-family: var(--lyric-font-zh, inherit);
+  font-family: "SPlayerLyricMixed", var(--lyric-font-zh, inherit);
 }
 
 :deep(:lang(ja)) {
-  font-family: var(--lyric-font-ja, inherit);
+  font-family: "SPlayerLyricMixed", var(--lyric-font-ja, inherit);
 }
 
 :deep(:lang(ko)) {
-  font-family: var(--lyric-font-ko, inherit);
+  font-family: "SPlayerLyricMixed", var(--lyric-font-ko, inherit);
 }
 
 :deep(:lang(und-Latn)) {
-  font-family: var(--lyric-font-latin, inherit);
+  font-family: "SPlayerLyricMixed", var(--lyric-font-latin, inherit);
 }
 
 :deep(.amll-line-lyric > :first-child *) {

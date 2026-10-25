@@ -3,6 +3,7 @@ import { useStatusStore } from "@/stores/status";
 import { useMediaStore } from "@/stores/media";
 import { useSettingsStore } from "@/stores/settings";
 import { usePlaybackTime } from "@/composables/usePlaybackTime";
+import { applyLyricFontFaces } from "@/services/lyricFontFaces";
 import { getCurrentTime } from "@/services/playback";
 import type { QualityLevel } from "@/utils/quality";
 import { useFavorite } from "@/composables/useFavorite";
@@ -22,6 +23,9 @@ import IconLucideListPlus from "~icons/lucide/list-plus";
 import IconLucideDownload from "~icons/lucide/download";
 
 const status = useStatusStore();
+
+// 歌词混排：西文 / 假名 / 谚文按设置分别绑字体
+watchEffect(() => applyLyricFontFaces(settings.lyric));
 const media = useMediaStore();
 const settings = useSettingsStore();
 const fav = useFavorite();
