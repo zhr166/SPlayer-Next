@@ -579,6 +579,11 @@ defineExpose({
   font-family: "SPlayerLyricMixed", var(--lyric-font-latin, inherit);
 }
 
+/* 逐词音译直接吃西文字体，不依赖 @font-face */
+:deep([class*="romanWord"]) {
+  font-family: var(--lyric-font-latin, "SPlayerLyricMixed", inherit);
+}
+
 :deep(.amll-line-lyric > :first-child *) {
   mask-image: none !important;
   -webkit-mask-image: none !important;

@@ -215,9 +215,9 @@
   font-family: "SPlayerLyricMixed", var(--lyric-font-latin, inherit);
 }
 
-/* 音译是拉丁转写：整体跟西文字体，行内谚文/假名仍由混排字体分流 */
+/* 音译是拉丁转写：直接吃西文字体变量，不依赖 @font-face；未设置时回落到混排字体 */
 .lp-content > .lp-sub.lp-sub-roman {
-  font-family: "SPlayerLyricMixed", var(--lyric-font-latin, inherit);
+  font-family: var(--lyric-font-latin, "SPlayerLyricMixed", inherit);
 }
 
 /* ---- 间奏圆点 ---- */
