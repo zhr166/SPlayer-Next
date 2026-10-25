@@ -29,5 +29,7 @@ package-lock.json
 *.pfx
 *.p12
 
-# 工作日志 / 待办（本地，禁止被 git 追踪或提交）
+# 宸ヤ綔鏃ュ織 / 寰呭姙锛堟湰鍦帮紝绂佹琚?git 杩借釜鎴栨彁浜わ級
 TODO.md
+!vendor/amll-core/dist
+!vendor/amll-core/dist/**
