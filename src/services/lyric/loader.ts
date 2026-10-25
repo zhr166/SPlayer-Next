@@ -264,8 +264,10 @@ const scheduleAppleMusicUpgrade = (token: number, track: Track, force = false): 
         return;
       }
       const media = useMediaStore();
-      // 只有逐字 AM 歌词才值得覆盖已有歌词；逐行 AM 结果保留现状
-      const wordLevel = isWordLevelTTML(resolved.input.content);
+      // 仅当 Apple Music 在线歌词开启时，逐字结果才无条件优先
+      const wordLevel =
+        useSettingsStore().system.lyric.enableAppleMusicTTMLLyric &&
+        isWordLevelTTML(resolved.input.content);
       const replace =
         force ||
         (wordLevel
