@@ -8,8 +8,10 @@ import type { LyricSettings } from "@/types/settings";
 
 const STYLE_ID = "splayer-lyric-script-faces";
 
-/** 分文字种类字体族名，排在所有歌词行字体列表最前 */
-export const LYRIC_SCRIPT_FONT_FAMILY = "SPlayerLyricScript";
+/** 分文字种类字体族名；日语行单独一套，让汉字跟随日文字体 */
+export const LYRIC_SCRIPT_FONT_FAMILY_ZH = "SPlayerLyricScriptZh";
+/** 日语行的分文字种类字体族名，汉字走日文字体 */
+export const LYRIC_SCRIPT_FONT_FAMILY_JA = "SPlayerLyricScriptJa";
 
 /** 拉丁字母、数字与西文标点 */
 const LATIN_RANGES = "U+0000-024F,U+1E00-1EFF,U+2000-206F,U+20A0-20CF,U+2100-214F";
@@ -19,6 +21,16 @@ const JAPANESE_RANGES = "U+3040-30FF,U+31F0-31FF,U+FF66-FF9F";
 const KOREAN_RANGES = "U+1100-11FF,U+3130-318F,U+AC00-D7AF";
 /** 汉字与中文标点：简体、繁体、扩展 A、兼容区、全角符号 */
 const CHINESE_RANGES = "U+3000-303F,U+3400-4DBF,U+4E00-9FFF,U+F900-FAFF,U+FF00-FF65";
+
+/** 汉字区兜底族名：苹方在 Windows 上注册为带前导点的隐藏族名 */
+const HAN_FALLBACK_FAMILIES = [
+  ".PingFang SC",
+  "PingFang SC",
+  ".萍方-简",
+  ".蘋方-簡",
+  ".PingFang TC",
+  "PingFang TC",
+];
 
 /**
  * 解析字体链字符串为字体名数组
@@ -47,18 +59,30 @@ export const applyLyricFontFaces = (lyric: LyricSettings): void => {
 
   const rules: string[] = [];
   // 字体链里每个字体各生成一条规则，浏览器按顺序取第一个能解析的
-  const addRule = (fonts: string, ranges: string): void => {
+  const addRule = (family: string, fonts: string, ranges: string): void => {
     for (const name of parseFontChain(fonts)) {
       rules.push(
-        `@font-face{font-family:"${LYRIC_SCRIPT_FONT_FAMILY}";src:local("${escapeFontName(name)}");unicode-range:${ranges};}`,
+        `@font-face{font-family:"${family}";src:local("${escapeFontName(name)}");unicode-range:${ranges};}`,
       );
     }
   };
 
-  addRule(lyric.fontFamilyLatin, LATIN_RANGES);
-  addRule(lyric.fontFamilyJapanese, JAPANESE_RANGES);
-  addRule(lyric.fontFamilyKorean, KOREAN_RANGES);
-  addRule(lyric.fontFamilyChinese, CHINESE_RANGES);
+  for (const family of [LYRIC_SCRIPT_FONT_FAMILY_ZH, LYRIC_SCRIPT_FONT_FAMILY_JA]) {
+    addRule(family, lyric.fontFamilyLatin, LATIN_RANGES);
+    addRule(family, lyric.fontFamilyJapanese, JAPANESE_RANGES);
+    addRule(family, lyric.fontFamilyKorean, KOREAN_RANGES);
+  }
+  // 日语行的汉字用日文字体，其余行的汉字用中文字体（苹方）
+  addRule(LYRIC_SCRIPT_FONT_FAMILY_ZH, lyric.fontFamilyChinese, CHINESE_RANGES);
+  addRule(LYRIC_SCRIPT_FONT_FAMILY_JA, lyric.fontFamilyJapanese, CHINESE_RANGES);
+  // 苹方族名带前导点，用户无法在列表里选中，这里按族名兜底
+  for (const family of [LYRIC_SCRIPT_FONT_FAMILY_ZH, LYRIC_SCRIPT_FONT_FAMILY_JA]) {
+    for (const name of HAN_FALLBACK_FAMILIES) {
+      rules.push(
+        `@font-face{font-family:"${family}";src:local("${escapeFontName(name)}");unicode-range:${CHINESE_RANGES};}`,
+      );
+    }
+  }
 
   let styleEl = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
   if (!styleEl) {

@@ -3,7 +3,11 @@ import { useStatusStore } from "@/stores/status";
 import { useMediaStore } from "@/stores/media";
 import { useSettingsStore } from "@/stores/settings";
 import { usePlaybackTime } from "@/composables/usePlaybackTime";
-import { applyLyricFontFaces, LYRIC_SCRIPT_FONT_FAMILY } from "@/services/lyricFontFaces";
+import {
+  applyLyricFontFaces,
+  LYRIC_SCRIPT_FONT_FAMILY_JA,
+  LYRIC_SCRIPT_FONT_FAMILY_ZH,
+} from "@/services/lyricFontFaces";
 import { getCurrentTime } from "@/services/playback";
 import type { QualityLevel } from "@/utils/quality";
 import { useFavorite } from "@/composables/useFavorite";
@@ -275,13 +279,14 @@ const lyricFontStacks = computed(() => {
       .filter(Boolean)
       .map((name) => `"${name}"`);
   const base = chain(settings.lyric.fontFamily);
-  const build = (cjk: string): string =>
-    [`"${LYRIC_SCRIPT_FONT_FAMILY}"`, ...chain(cjk), ...base].join(", ");
+  const hanFallback = ['".PingFang SC"', '"PingFang SC"', '".萍方-简"'];
+  const build = (family: string, cjk: string): string =>
+    [`"${family}"`, ...chain(cjk), ...hanFallback, ...base].join(", ");
   return {
-    zh: build(settings.lyric.fontFamilyChinese),
-    ja: build(settings.lyric.fontFamilyJapanese),
-    ko: build(settings.lyric.fontFamilyKorean),
-    latin: build(""),
+    zh: build(LYRIC_SCRIPT_FONT_FAMILY_ZH, settings.lyric.fontFamilyChinese),
+    ja: build(LYRIC_SCRIPT_FONT_FAMILY_JA, settings.lyric.fontFamilyJapanese),
+    ko: build(LYRIC_SCRIPT_FONT_FAMILY_ZH, settings.lyric.fontFamilyKorean),
+    latin: build(LYRIC_SCRIPT_FONT_FAMILY_ZH, ""),
   };
 });
 
