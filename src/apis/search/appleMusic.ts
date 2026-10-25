@@ -67,28 +67,25 @@ const toTrack = (
     previewUrl: song.previewUrl,
   };
 
-  if (plugin) {
-    return {
-      ...common,
-      source: "plugin",
-      plugin: {
-        pluginId: plugin.manifest.id,
-        source: AM_SOURCE_KEY,
-        musicInfo: {
-          id: song.id,
-          songmid: song.id,
-          name: song.title,
-          singer: song.artistName,
-          album: song.albumName,
-          durationMs: song.durationMs,
-          cover: song.coverUrl,
-          storefront,
-        },
-      },
-    };
-  }
+  // 插件信息始终挂在曲目上：搜索时插件可能尚未就绪，播放时再判断能否走插件
+  const pluginMeta = {
+    pluginId: plugin?.manifest.id ?? AM_PLUGIN_ID,
+    source: AM_SOURCE_KEY,
+    musicInfo: {
+      id: song.id,
+      songmid: song.id,
+      name: song.title,
+      singer: song.artistName,
+      album: song.albumName,
+      durationMs: song.durationMs,
+      cover: song.coverUrl,
+      storefront,
+    },
+  };
 
-  return { ...common, source: "appleMusic" };
+  return plugin
+    ? { ...common, source: "plugin", plugin: pluginMeta }
+    : { ...common, source: "appleMusic", plugin: pluginMeta };
 };
 
 /**

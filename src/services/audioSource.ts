@@ -301,16 +301,32 @@ export const resolveTrackSource = async (
     if (!localPath) reportLoadError(ErrorCode.FILE_NOT_FOUND, options);
     return localPath ? { source: localPath, fromCache: false, provider: "local" } : null;
   }
-  // Apple Music 目录曲目：装音量插件时搜索层会构造为 plugin 曲目，走到这里只剩 30 秒试听
+  const settings = useSettingsStore();
+  const songLevel = settings.player.songLevel;
+  // Apple Music 目录曲目：先按插件元数据尝试解析整曲，插件不可用或失败时退回 30 秒试听
   if (track.source === "appleMusic") {
+    if (track.plugin && !options.skipPluginIds?.includes(track.plugin.pluginId)) {
+      const resolved = await resolveByPlugin(
+        { ...track, source: "plugin" },
+        songLevel,
+        options.skipPluginIds,
+      );
+      if (resolved.ok) {
+        return {
+          source: resolved.url,
+          fromCache: false,
+          provider: "plugin",
+          pluginId: resolved.pluginId,
+        };
+      }
+      console.warn("[audio-source] appleMusic plugin resolve failed, fallback to preview");
+    }
     if (!track.previewUrl) {
       reportLoadError(ErrorCode.URL_RESOLVE_FAILED, options);
       return null;
     }
     return { source: track.previewUrl, fromCache: false, provider: "trial" };
   }
-  const settings = useSettingsStore();
-  const songLevel = settings.player.songLevel;
   if (track.source === "plugin") {
     const resolved = await resolveByPlugin(track, songLevel, options.skipPluginIds);
     if (!resolved.ok) {
