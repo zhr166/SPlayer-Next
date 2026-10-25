@@ -264,8 +264,14 @@ const processLyricLanguage = (player = playerRef.value) => {
       const lyricMainLineElement = lyricLineElement.firstChild;
       if (lyricMainLineElement instanceof HTMLElement) {
         const language = (lyricLine as LyricLine).language;
-        if (language) lyricMainLineElement.lang = language;
-        else lyricMainLineElement.removeAttribute("lang");
+        // 行根元素也带 lang，副行（音译/翻译）才会命中对应语种字体
+        if (language) {
+          lyricLineElement.lang = language;
+          lyricMainLineElement.lang = language;
+        } else {
+          lyricLineElement.removeAttribute("lang");
+          lyricMainLineElement.removeAttribute("lang");
+        }
       }
     }
   }
