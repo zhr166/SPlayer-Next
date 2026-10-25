@@ -3,6 +3,7 @@ import type { SettingCategory } from "@/types/settings-schema";
 import DeviceSelector from "@/components/settings/custom/DeviceSelector.vue";
 import { isWin } from "@/utils/config";
 import IconLucidePlay from "~icons/lucide/play";
+import { useUserStore } from "@/stores/user";
 import { getActiveDeviceId } from "@/core/player";
 import { setDeviceVolume } from "@/services/deviceVolume";
 import { useStatusStore } from "@/stores/status";
@@ -123,6 +124,14 @@ const playerCategory: SettingCategory = {
             await settings.setSystem("cache.songCache.enabled", true);
             await settings.setSystem("cache.songCache.cacheStreaming", true);
           },
+        },
+        {
+          key: "dynamicCover",
+          type: "switch",
+          binding: { store: "settings", path: "player.dynamicCover" },
+          defaultValue: false,
+          // 动态封面依赖网易云登录态
+          disabled: () => !useUserStore().isLoggedIn,
         },
       ],
     },
