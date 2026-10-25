@@ -173,19 +173,19 @@
 
 .lp-main:lang(zh),
 .lp-main:lang(yue) {
-  font-family: "SPlayerLyricMixed", var(--lyric-font-zh, inherit);
+  font-family: var(--lyric-font-zh, inherit);
 }
 
 .lp-main:lang(ja) {
-  font-family: "SPlayerLyricMixed", var(--lyric-font-ja, inherit);
+  font-family: var(--lyric-font-ja, inherit);
 }
 
 .lp-main:lang(ko) {
-  font-family: "SPlayerLyricMixed", var(--lyric-font-ko, inherit);
+  font-family: var(--lyric-font-ko, inherit);
 }
 
 .lp-main:lang(und-Latn) {
-  font-family: "SPlayerLyricMixed", var(--lyric-font-latin, inherit);
+  font-family: var(--lyric-font-latin, inherit);
 }
 
 /* ---- 副文本（翻译/音译） ---- */
@@ -200,24 +200,19 @@
 /* 副文本同样按语种取字体：谚文走韩文字体、假名走日文字体，汉字跟行语言 */
 .lp-content:lang(zh) > .lp-sub,
 .lp-content:lang(yue) > .lp-sub {
-  font-family: "SPlayerLyricMixed", var(--lyric-font-zh, inherit);
+  font-family: var(--lyric-font-zh, inherit);
 }
 
 .lp-content:lang(ja) > .lp-sub {
-  font-family: "SPlayerLyricMixed", var(--lyric-font-ja, inherit);
+  font-family: var(--lyric-font-ja, inherit);
 }
 
 .lp-content:lang(ko) > .lp-sub {
-  font-family: "SPlayerLyricMixed", var(--lyric-font-ko, inherit);
+  font-family: var(--lyric-font-ko, inherit);
 }
 
 .lp-content:lang(und-Latn) > .lp-sub {
-  font-family: "SPlayerLyricMixed", var(--lyric-font-latin, inherit);
-}
-
-/* 音译是拉丁转写：直接吃西文字体变量，不依赖 @font-face；未设置时回落到混排字体 */
-.lp-content > .lp-sub.lp-sub-roman {
-  font-family: var(--lyric-font-latin, "SPlayerLyricMixed", inherit);
+  font-family: var(--lyric-font-latin, inherit);
 }
 
 /* ---- 间奏圆点 ---- */

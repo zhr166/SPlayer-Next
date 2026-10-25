@@ -3,7 +3,6 @@ import { useStatusStore } from "@/stores/status";
 import { useMediaStore } from "@/stores/media";
 import { useSettingsStore } from "@/stores/settings";
 import { usePlaybackTime } from "@/composables/usePlaybackTime";
-import { applyLyricFontFaces } from "@/services/lyricFontFaces";
 import { getCurrentTime } from "@/services/playback";
 import type { QualityLevel } from "@/utils/quality";
 import { useFavorite } from "@/composables/useFavorite";
@@ -23,9 +22,6 @@ import IconLucideListPlus from "~icons/lucide/list-plus";
 import IconLucideDownload from "~icons/lucide/download";
 
 const status = useStatusStore();
-
-// 歌词混排：西文 / 假名 / 谚文按设置分别绑字体
-watchEffect(() => applyLyricFontFaces(settings.lyric));
 const media = useMediaStore();
 const settings = useSettingsStore();
 const fav = useFavorite();
@@ -260,6 +256,26 @@ const springConfig = computed(() =>
       },
 );
 
+/**
+ * 分语种歌词字体栈
+ *
+ * 西文字体排在最前，只覆盖拉丁字符；缺字时按顺序回落到该行语言字体与全局歌词字体。
+ * 这样不依赖 @font-face 的 local() 匹配，字体族名不标准也能正确分流
+ */
+const lyricFontStacks = computed(() => {
+  const quote = (name: string): string => (name?.trim() ? `"${name.trim()}"` : "");
+  const base = quote(settings.lyric.fontFamily);
+  const build = (cjk: string): string =>
+    [quote(settings.lyric.fontFamilyLatin), quote(cjk), base].filter(Boolean).join(", ") ||
+    "inherit";
+  return {
+    zh: build(settings.lyric.fontFamilyChinese),
+    ja: build(settings.lyric.fontFamilyJapanese),
+    ko: build(settings.lyric.fontFamilyKorean),
+    latin: build(""),
+  };
+});
+
 const lyricFontSize = computed(() =>
   settings.lyric.adaptiveFontSize
     ? `calc(${settings.lyric.fontSize} / 1080 * 100vh)`
@@ -451,10 +467,10 @@ const showComments = (): void => {
                 fontSize: lyricFontSize,
                 fontWeight: String(settings.lyric.fontWeight),
                 fontFamily: settings.lyric.fontFamily || undefined,
-                '--lyric-font-zh': settings.lyric.fontFamilyChinese || undefined,
-                '--lyric-font-ja': settings.lyric.fontFamilyJapanese || undefined,
-                '--lyric-font-ko': settings.lyric.fontFamilyKorean || undefined,
-                '--lyric-font-latin': settings.lyric.fontFamilyLatin || undefined,
+                '--lyric-font-zh': lyricFontStacks.zh,
+                '--lyric-font-ja': lyricFontStacks.ja,
+                '--lyric-font-ko': lyricFontStacks.ko,
+                '--lyric-font-latin': lyricFontStacks.latin,
                 mixBlendMode: settings.lyric.lyricBlendMode,
               }"
             >
