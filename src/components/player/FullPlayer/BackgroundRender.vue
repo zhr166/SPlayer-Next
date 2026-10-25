@@ -1,13 +1,31 @@
 <script setup lang="ts">
 import {
-  type AbstractBaseRenderer,
-  type BaseRenderer,
   BackgroundRender as CoreBackgroundRender,
   MeshGradientRenderer,
-} from "@applemusic-like-lyrics/core";
-import { getFftFrame } from "@/services/playback";
+  IsolationRenderer,
+  PixiRenderer,
+  TitaniumRenderer,
+  type BaseRenderer,
+  type IsolationRendererOptions,
+  type TitaniumRendererOptions,
+} from "@applemusic-like-lyrics/core-bg";
+import { getCurrentTime, getFftFrame } from "@/services/playback";
 import { acquireFft, releaseFft } from "@/services/fftCapture";
-import { getBassPulse, toAmllLowFreqVolume } from "@/services/audioFeatures";
+import {
+  createBassPulseDetector,
+  getBassPulse,
+  toAmllLowFreqVolume,
+} from "@/services/audioFeatures";
+
+/** 可选的流体背景渲染引擎 */
+export type BackgroundRenderEngine = "mesh" | "isolation" | "pixi" | "titanium";
+
+const RENDERER_MAP = {
+  mesh: MeshGradientRenderer,
+  isolation: IsolationRenderer,
+  pixi: PixiRenderer,
+  titanium: TitaniumRenderer,
+} as const;
 
 export interface BackgroundRenderProps {
   /** 专辑封面资源 URL */
@@ -24,8 +42,12 @@ export interface BackgroundRenderProps {
   renderScale?: number;
   /** 是否随低频节拍脉动（默认 false，关闭则不采集 FFT） */
   enableBeat?: boolean;
-  /** 渲染器类，默认为 MeshGradientRenderer */
-  renderer?: new (...args: ConstructorParameters<typeof BaseRenderer>) => BaseRenderer;
+  /** 渲染引擎，默认为 mesh */
+  renderEngine?: BackgroundRenderEngine;
+  /** isolation 参数：光波 / 抖动 / 取色算法 */
+  isolationOptions?: Partial<IsolationRendererOptions>;
+  /** Titanium 流沙渲染器参数（仅 titanium 引擎支持） */
+  titaniumOptions?: Partial<TitaniumRendererOptions>;
 }
 
 const props = withDefaults(defineProps<BackgroundRenderProps>(), {
@@ -35,13 +57,53 @@ const props = withDefaults(defineProps<BackgroundRenderProps>(), {
   fps: 30,
   renderScale: 0.5,
   enableBeat: false,
-  renderer: () => MeshGradientRenderer,
+  renderEngine: "mesh",
+  isolationOptions: () => ({}),
+  titaniumOptions: () => ({}),
 });
 
 const wrapperRef = ref<HTMLDivElement | null>(null);
 
+type CoreRenderer = CoreBackgroundRender<BaseRenderer>;
+
 // 外部渲染器实例引用
-const bgRenderRef = shallowRef<AbstractBaseRenderer>();
+const bgRenderRef = shallowRef<CoreRenderer>();
+
+/**
+ * 按当前引擎创建渲染器；引擎不受当前设备支持时回退到 mesh
+ * @returns 已挂载的渲染器包装实例
+ */
+const createRenderer = (): CoreRenderer | undefined => {
+  const container = wrapperRef.value;
+  if (!container) return undefined;
+
+  let engine = props.renderEngine;
+  if (engine === "isolation" && !IsolationRenderer.isSupported()) engine = "mesh";
+  if (engine === "titanium" && !TitaniumRenderer.isSupported()) engine = "mesh";
+
+  // 各引擎构造函数签名一致，统一收窄到 BaseRenderer 再交给工厂
+  const ctor = RENDERER_MAP[engine] as new (canvas: HTMLCanvasElement) => BaseRenderer;
+  const instance = CoreBackgroundRender.new(ctor);
+  const el = instance.getElement();
+  el.style.width = "100%";
+  el.style.height = "100%";
+  el.style.display = "block";
+  container.replaceChildren(el);
+  return instance;
+};
+
+/**
+ * 同步各引擎专有选项（isolation 光波/抖动/取色，titanium 流沙参数）
+ */
+const syncRendererOptions = () => {
+  const renderer = bgRenderRef.value?.getRenderer();
+  if (renderer instanceof IsolationRenderer) {
+    renderer.setOptions({ ...props.isolationOptions });
+  }
+  if (renderer instanceof TitaniumRenderer) {
+    renderer.setOptions({ ...props.titaniumOptions });
+  }
+};
 
 /**
  * 统一同步更新属性状态到底层渲染器
@@ -56,6 +118,7 @@ const updateRendererState = () => {
   renderer.setFPS(props.fps);
   renderer.setRenderScale(props.renderScale);
   renderer.setHasLyric(props.hasLyric);
+  syncRendererOptions();
   syncRendererMotion();
 };
 
@@ -76,15 +139,27 @@ const syncRendererMotion = () => {
   }
 };
 
-const BASS_ATTACK = 0.45;
-const BASS_DECAY = 0.14;
+/**
+ * 释放当前渲染器并重建，用于切换引擎
+ */
+const recreateRenderer = () => {
+  const previous = bgRenderRef.value;
+  bgRenderRef.value = undefined;
+  if (previous) {
+    previous.pause();
+    previous.dispose();
+  }
+  bgRenderRef.value = createRenderer();
+  updateRendererState();
+  syncFftCapture();
+};
 
-// 低频平滑后脉冲
-let smoothedPulse = 0;
+// 低频起音检测（自适应基线 / 暖机 / 不应期 / 包络衰减）
+const pulseDetector = createBassPulseDetector();
 let lastFftFrame: readonly [number[], number[]] = [[], []];
 
 /**
- * 从最新 FFT 帧数据计算低频音量能量值 [0.0 - 1.0]
+ * 从最新 FFT 帧数据推进起音检测并下发给渲染器
  */
 const updateLowFreqVolume = () => {
   const data = getFftFrame();
@@ -92,11 +167,9 @@ const updateLowFreqVolume = () => {
   if (data === lastFftFrame) return;
   lastFftFrame = data;
 
-  const pulse = getBassPulse(data);
-  const smoothFactor = pulse > smoothedPulse ? BASS_ATTACK : BASS_DECAY;
-  smoothedPulse = smoothedPulse + smoothFactor * (pulse - smoothedPulse);
+  const pulse = pulseDetector.update(getBassPulse(data), getCurrentTime());
 
-  bgRenderRef.value?.setLowFreqVolume(toAmllLowFreqVolume(smoothedPulse));
+  bgRenderRef.value?.setLowFreqVolume(toAmllLowFreqVolume(pulse));
 };
 
 const { resume: resumeFftLoop, pause: pauseFftLoop } = useRafFn(updateLowFreqVolume, {
@@ -137,7 +210,7 @@ const syncFftCapture = () => {
   } else {
     stopFftCapture();
     if (!props.enableBeat) {
-      smoothedPulse = 0;
+      pulseDetector.reset();
       lastFftFrame = [[], []];
       bgRenderRef.value?.setLowFreqVolume(1.0);
     }
@@ -146,17 +219,7 @@ const syncFftCapture = () => {
 
 onMounted(() => {
   if (!wrapperRef.value) return;
-
-  // 初始化 AMLL 底层渲染器
-  bgRenderRef.value = CoreBackgroundRender.new(props.renderer);
-
-  // 设置 Canvas 自适应容器并附着 DOM
-  const el = bgRenderRef.value.getElement();
-  el.style.width = "100%";
-  el.style.height = "100%";
-  el.style.display = "block";
-  wrapperRef.value.appendChild(el);
-
+  bgRenderRef.value = createRenderer();
   updateRendererState();
   syncFftCapture();
 });
@@ -180,6 +243,9 @@ watch(
     if (val && bgRenderRef.value) {
       bgRenderRef.value.setAlbum(val, false);
     }
+    // 换封面即换曲，起音检测重新暖机
+    pulseDetector.reset();
+    lastFftFrame = [[], []];
   },
 );
 
@@ -194,6 +260,23 @@ watch(
 watch(
   () => props.enableBeat,
   () => syncFftCapture(),
+);
+
+watch(
+  () => props.renderEngine,
+  () => recreateRenderer(),
+);
+
+watch(
+  () => props.isolationOptions,
+  () => syncRendererOptions(),
+  { deep: true },
+);
+
+watch(
+  () => props.titaniumOptions,
+  () => syncRendererOptions(),
+  { deep: true },
 );
 
 watch(

@@ -6,7 +6,8 @@ import type { LyricAlignment } from "lyric-dom";
 import type { QualityLevel } from "@/utils/quality";
 
 /** 播放器背景类型 */
-export type PlayerBgType = "blur" | "solid" | "animation" | "apple-music" | "apple-music-classic";
+export type PlayerBgType =
+  "blur" | "solid" | "animation" | "isolation" | "titanium" | "apple-music" | "apple-music-classic";
 export type CoverLayout = "default" | "fullscreen";
 
 /**
@@ -31,7 +32,10 @@ export type PlayBehavior = "current" | "all";
 export type SongListStyle = "comfortable" | "compact";
 
 /** 流体背景渲染引擎 */
-export type PlayerBgRenderer = "mesh" | "isolation" | "pixi";
+export type PlayerBgRenderer = "mesh" | "isolation" | "pixi" | "titanium";
+
+/** isolation 渲染器的取色算法 */
+export type IsolationPaletteAlgorithm = "auto" | "kmeans" | "octtree";
 
 /**
  * 歌词来源偏好
@@ -274,6 +278,22 @@ export interface PlayerSettings {
   playerBgFreezeOnPause: boolean;
   /** 流体背景随低频节拍脉动 */
   playerBgBeat: boolean;
+  /** isolation 渲染器的光波明度调制 */
+  playerBgLightWave: boolean;
+  /** isolation 渲染器：屏幕空间抖动 */
+  playerBgIsolationDithering: boolean;
+  /** isolation 渲染器：取色算法 */
+  playerBgIsolationPalette: IsolationPaletteAlgorithm;
+  /** Titanium 流沙渲染器：细颗粒强度 */
+  playerBgTitaniumGrain: number;
+  /** Titanium 流沙渲染器：金属闪粉强度 */
+  playerBgTitaniumSparkle: number;
+  /** Titanium 流沙渲染器：金属高光强度 */
+  playerBgTitaniumSheen: number;
+  /** Titanium 流沙渲染器：金属化程度 */
+  playerBgTitaniumMetalness: number;
+  /** Titanium 流沙渲染器：换封面时锋线迁移时长（毫秒） */
+  playerBgTitaniumCrestShiftMs: number;
   /** 全屏播放器封面布局 */
   coverLayout: CoverLayout;
   /** 播放页封面/歌词分栏占比（0-1，封面侧宽度） */

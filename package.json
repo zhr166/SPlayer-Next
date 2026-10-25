@@ -72,6 +72,7 @@
   },
   "devDependencies": {
     "@applemusic-like-lyrics/core": "0.5.2",
+    "@applemusic-like-lyrics/core-bg": "file:vendor/amll-core",
     "@electron-toolkit/eslint-config-ts": "^3.1.0",
     "@electron-toolkit/tsconfig": "^2.0.0",
     "@electron/rebuild": "^4.2.1",

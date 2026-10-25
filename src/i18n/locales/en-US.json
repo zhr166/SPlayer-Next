@@ -1713,7 +1713,9 @@
       "solid": "Solid",
       "animation": "Fluid",
       "appleMusic": "Apple Music",
-      "appleMusicClassic": "Apple Music Classic"
+      "appleMusicClassic": "Apple Music Classic",
+      "isolation": "Isolation",
+      "titanium": "Titanium"
     },
     "playerBgFlowSpeed": {
       "label": "Flow Speed",
@@ -2496,7 +2498,8 @@
       "description": "Select the rendering engine for fluid animation background",
       "mesh": "Mesh Gradient Renderer",
       "isolation": "Isolation Renderer",
-      "pixi": "PixiJS Renderer"
+      "pixi": "PixiJS Renderer",
+      "titanium": "Titanium"
     },
     "songListStyle": {
       "label": "Song List Style",
@@ -2529,6 +2532,41 @@
     },
     "pluginList": {
       "label": "Installed Plugins"
+    },
+    "playerBgLightWave": {
+      "label": "Light wave",
+      "description": "Adds a brightness ripple driven by low frequencies; isolation engine only"
+    },
+    "playerBgTitaniumGrain": {
+      "label": "Grain",
+      "description": "Fine particle (powder) strength for Titanium"
+    },
+    "playerBgTitaniumSparkle": {
+      "label": "Sparkle",
+      "description": "Metallic sparkle strength"
+    },
+    "playerBgTitaniumSheen": {
+      "label": "Sheen",
+      "description": "Metallic sheen strength"
+    },
+    "playerBgTitaniumMetalness": {
+      "label": "Metalness",
+      "description": "How far the image is desaturated toward luminance"
+    },
+    "playerBgTitaniumCrestShiftMs": {
+      "label": "Crest shift",
+      "description": "Crest shift duration on cover change (ms); 0 jumps instantly"
+    },
+    "playerBgIsolationPalette": {
+      "label": "Palette algorithm",
+      "description": "Algorithm used to extract the palette from the cover",
+      "auto": "Auto (K-Means / Octree)",
+      "kmeans": "K-Means",
+      "octtree": "Octree"
+    },
+    "playerBgIsolationDithering": {
+      "label": "Dithering",
+      "description": "Adds faint noise to remove gradient banding"
     }
   },
   "collection": {

@@ -224,6 +224,9 @@ importers:
       '@applemusic-like-lyrics/core':
         specifier: 0.5.2
         version: 0.5.2(patch_hash=137749c20ea7bbdd047905dccac0c3f1eb1999a4fc92cf1923ef284f993bff2d)(@pixi/app@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3)))(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3))(@pixi/filter-blur@7.4.3(@pixi/core@7.4.3))(@pixi/filter-bulge-pinch@5.1.1(@pixi/core@7.4.3))(@pixi/filter-color-matrix@7.4.3(@pixi/core@7.4.3))(@pixi/sprite@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3)))
+      '@applemusic-like-lyrics/core-bg':
+        specifier: file:vendor/amll-core
+        version: '@applemusic-like-lyrics/core@file:vendor/amll-core'
       '@electron-toolkit/eslint-config-ts':
         specifier: ^3.1.0
         version: 3.1.0(eslint@10.13.0(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
@@ -418,6 +421,9 @@ packages:
       '@pixi/filter-bulge-pinch': '*'
       '@pixi/filter-color-matrix': '*'
       '@pixi/sprite': '*'
+
+  '@applemusic-like-lyrics/core@file:vendor/amll-core':
+    resolution: {directory: vendor/amll-core, type: directory}
 
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
@@ -5609,6 +5615,8 @@ snapshots:
       bezier-easing: 3.1.0
       deep-freeze: 0.0.1
       gl-matrix: 4.0.0-beta.2
+
+  '@applemusic-like-lyrics/core@file:vendor/amll-core': {}
 
   '@babel/code-frame@7.29.7':
     dependencies:

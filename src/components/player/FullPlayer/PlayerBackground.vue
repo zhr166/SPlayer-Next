@@ -12,6 +12,33 @@ const status = useStatusStore();
 
 const bgType = computed(() => settings.player.playerBgType as string);
 
+/** 独立 isolation / titanium 背景固定用对应引擎，流体背景才跟随设置 */
+const effectiveRenderer = computed(() => {
+  if (bgType.value === "isolation" || bgType.value === "titanium") return bgType.value;
+  return settings.player.playerBgRenderer;
+});
+
+/** 钛金属细颗粒需要原生分辨率，其余渲染器沿用设置里的缩放比 */
+const effectiveRenderScale = computed(() =>
+  effectiveRenderer.value === "titanium" ? 1 : settings.player.playerBgRenderScale,
+);
+
+/** isolation 渲染器参数 */
+const isolationOptions = computed(() => ({
+  lightWave: settings.player.playerBgLightWave,
+  dithering: settings.player.playerBgIsolationDithering,
+  paletteAlgorithm: settings.player.playerBgIsolationPalette,
+}));
+
+/** Titanium 流沙渲染器参数 */
+const titaniumOptions = computed(() => ({
+  grain: settings.player.playerBgTitaniumGrain,
+  sparkle: settings.player.playerBgTitaniumSparkle,
+  sheen: settings.player.playerBgTitaniumSheen,
+  metalness: settings.player.playerBgTitaniumMetalness,
+  crestShiftMs: settings.player.playerBgTitaniumCrestShiftMs,
+}));
+
 /**
  * 背景是否就绪
  * 展开后延迟 500ms 再挂载，收起后延迟 500ms 卸载以释放 WebGL 上下文 / 模糊位图
@@ -128,16 +155,23 @@ onBeforeUnmount(() => {
     </div>
   </Transition>
   <!-- 流体背景 -->
-  <Transition v-else-if="bgType === 'animation'" name="bg-fade">
+  <Transition
+    v-else-if="bgType === 'animation' || bgType === 'isolation' || bgType === 'titanium'"
+    name="bg-fade"
+  >
     <div v-if="bgReady" class="absolute inset-0 overflow-hidden -z-1">
       <BackgroundRender
+        :key="bgType"
         :album="media.track?.cover || DEFAULT_COVER"
         :playing="bgPlaying"
         :fps="settings.player.playerBgFps"
         :flow-speed="settings.player.playerBgFlowSpeed"
-        :render-scale="settings.player.playerBgRenderScale"
+        :render-scale="effectiveRenderScale"
         :has-lyric="media.parsedLyric.length > 0"
         :enable-beat="settings.player.playerBgBeat"
+        :render-engine="effectiveRenderer"
+        :isolation-options="isolationOptions"
+        :titanium-options="titaniumOptions"
       />
     </div>
   </Transition>
