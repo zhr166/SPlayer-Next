@@ -225,9 +225,9 @@ export const useSettingsStore = defineStore(
       pauseClearBlur: false,
       hidePassedLines: false,
       springPreset: "default",
-      springMass: 0.9,
-      springDamping: 15,
-      springStiffness: 90,
+      springMass: 1,
+      springDamping: 20,
+      springStiffness: 50,
       alignPosition: 0.35,
       alignment: "auto",
       wordFadeWidth: 0.5,
@@ -237,9 +237,10 @@ export const useSettingsStore = defineStore(
       excludeLyricsUserRegexes: [],
       engine: "physics",
       useAMSpring: true,
+      // 过阻尼参数：滚动平滑无回弹，与官方 lyric-dom 的默认手感一致
       amllVerticalSpringMass: 1,
-      amllVerticalSpringDamping: 15,
-      amllVerticalSpringStiffness: 100,
+      amllVerticalSpringDamping: 20,
+      amllVerticalSpringStiffness: 50,
       amllVerticalSpringSoft: false,
       amllScaleSpringMass: 1,
       amllScaleSpringDamping: 20,
@@ -465,6 +466,27 @@ export const useSettingsStore = defineStore(
         }
         if (typeof lyric.raiseAlignPositionOnOverlap !== "boolean") {
           lyric.raiseAlignPositionOnOverlap = false;
+        }
+        // 旧的默认弹簧（0.9/15/90）太硬，迁到官方 lyric-dom 的过阻尼参数
+        if (
+          lyric.springPreset === "default" &&
+          lyric.springMass === 0.9 &&
+          lyric.springDamping === 15 &&
+          lyric.springStiffness === 90
+        ) {
+          lyric.springMass = SPRING_PRESETS.default.mass;
+          lyric.springDamping = SPRING_PRESETS.default.damping;
+          lyric.springStiffness = SPRING_PRESETS.default.stiffness;
+        }
+        // AMLL 垂直弹簧同样从 1/15/100 迁到过阻尼参数
+        if (
+          lyric.amllVerticalSpringMass === 1 &&
+          lyric.amllVerticalSpringDamping === 15 &&
+          lyric.amllVerticalSpringStiffness === 100 &&
+          lyric.amllVerticalSpringSoft === false
+        ) {
+          lyric.amllVerticalSpringDamping = 20;
+          lyric.amllVerticalSpringStiffness = 50;
         }
         if (typeof store.appearance.sidebarShortcutToggle !== "boolean") {
           store.appearance.sidebarShortcutToggle = false;

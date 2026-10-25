@@ -73,7 +73,8 @@ export const SPRING_PRESETS: Record<
   Exclude<SpringPreset, "custom">,
   { mass: number; damping: number; stiffness: number }
 > = {
-  default: { mass: 0.9, damping: 15, stiffness: 90 },
+  // 与官方 lyric-dom 的默认弹簧一致：过阻尼，滚动平滑无回弹
+  default: { mass: 1, damping: 20, stiffness: 50 },
   smooth: { mass: 1.2, damping: 22, stiffness: 80 },
   responsive: { mass: 0.5, damping: 18, stiffness: 150 },
   jello: { mass: 0.6, damping: 8, stiffness: 120 },
