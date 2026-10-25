@@ -3,6 +3,7 @@ import { useStatusStore } from "@/stores/status";
 import { useMediaStore } from "@/stores/media";
 import { useSettingsStore } from "@/stores/settings";
 import { usePlaybackTime } from "@/composables/usePlaybackTime";
+import { applyLyricFontFaces, LYRIC_SCRIPT_FONT_FAMILY } from "@/services/lyricFontFaces";
 import { getCurrentTime } from "@/services/playback";
 import type { QualityLevel } from "@/utils/quality";
 import { useFavorite } from "@/composables/useFavorite";
@@ -24,6 +25,9 @@ import IconLucideDownload from "~icons/lucide/download";
 const status = useStatusStore();
 const media = useMediaStore();
 const settings = useSettingsStore();
+
+// 按文字种类分配字体：西文 / 假名 / 谚文 / 汉字各用各的
+watchEffect(() => applyLyricFontFaces(settings.lyric));
 const fav = useFavorite();
 const { enqueue: enqueueDownload } = useDownload();
 const { t } = useI18n();
@@ -263,11 +267,16 @@ const springConfig = computed(() =>
  * 这样不依赖 @font-face 的 local() 匹配，字体族名不标准也能正确分流
  */
 const lyricFontStacks = computed(() => {
-  const quote = (name: string): string => (name?.trim() ? `"${name.trim()}"` : "");
-  const base = quote(settings.lyric.fontFamily);
+  // 设置里存的是字体链（逗号分隔），逐个加引号后拼成 font-family
+  const chain = (value: string): string[] =>
+    (value ?? "")
+      .split(",")
+      .map((name) => name.trim().replace(/^["']|["']$/g, ""))
+      .filter(Boolean)
+      .map((name) => `"${name}"`);
+  const base = chain(settings.lyric.fontFamily);
   const build = (cjk: string): string =>
-    [quote(settings.lyric.fontFamilyLatin), quote(cjk), base].filter(Boolean).join(", ") ||
-    "inherit";
+    [`"${LYRIC_SCRIPT_FONT_FAMILY}"`, ...chain(cjk), ...base].join(", ");
   return {
     zh: build(settings.lyric.fontFamilyChinese),
     ja: build(settings.lyric.fontFamilyJapanese),
