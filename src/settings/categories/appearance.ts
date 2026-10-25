@@ -283,6 +283,8 @@ const appearanceCategory: SettingCategory = {
               key: "playerBgRenderer",
               type: "select",
               binding: { store: "settings", path: "player.playerBgRenderer" },
+              // 仅流体动画背景依赖 Metal/Pixi 渲染器，Apple Music 两种背景用不到
+              visible: () => useSettingsStore().player.playerBgType === "animation",
               options: [
                 { value: "mesh", labelKey: "settings.playerBgRenderer.mesh" },
                 { value: "isolation", labelKey: "settings.playerBgRenderer.isolation" },
