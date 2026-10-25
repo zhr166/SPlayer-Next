@@ -76,10 +76,6 @@ html[data-reduced-motion] {
     --un-translate-y: 0px;
   }
 
-  :is(.cover-card-image, .blur-1, .blur-4) {
-    filter: none !important;
-  }
-
   :is(.will-change-transform, [class*="hover:will-change-"], .s-marquee-scrolling) {
     will-change: auto !important;
   }
@@ -92,29 +88,7 @@ html[data-reduced-motion] {
     display: none;
   }
 
-  :is(.glass-panel, [class*="backdrop-blur-"]) {
-    backdrop-filter: none;
-  }
-
-  footer.glass-panel {
-    background-color: rgb(var(--s-surface-panel) / 0.92);
-  }
-
   /* 移除毛玻璃后用更实的底色保证可读性 */
-  &[data-appearance-style="image"]
-    :is(
-      .glass-panel,
-      .bg-surface-bright,
-      .bg-field,
-      footer.bg-surface-panel,
-      [role="dialog"].bg-surface-panel,
-      [role="dialog"].bg-surface-alt,
-      [role="alertdialog"].bg-surface-panel,
-      [role="alertdialog"].bg-surface-alt
-    ) {
-    backdrop-filter: none;
-    background-color: rgb(var(--s-surface-panel) / 0.92);
-  }
 
   .player-transition-shine {
     animation: none;
