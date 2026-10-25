@@ -35,6 +35,9 @@ import type { LyricSourcePreference } from "@/types/settings";
 /** 竞态 token */
 let currentToken = 0;
 
+/** 本次加载的起始时间，用于日志里度量首屏耗时 */
+let loadStartedAt = 0;
+
 /** 渲染进程歌词日志：经 IPC 落到主进程文件日志，便于定位歌词加载链路。 */
 const logLyric = (level: "info" | "warn" | "error", message: string): void => {
   void window.api.lyrics.log(level, message);
@@ -95,9 +98,11 @@ const commit = (token: number, source: LyricData, input: LyricInput | null): voi
   const desc = source
     ? `${source.source}:${source.format}:${source.platform ?? source.provider ?? ""}`
     : "null";
+  const elapsed = loadStartedAt > 0 ? Math.round(performance.now() - loadStartedAt) : -1;
+  loadStartedAt = 0;
   logLyric(
     "info",
-    `commit → ${desc}, parsedLines=${media.parsedLyric.length}, token=${token}`,
+    `commit → ${desc}, parsedLines=${media.parsedLyric.length}, token=${token}, elapsed=${elapsed}ms`,
   );
 };
 
@@ -225,6 +230,12 @@ const tryPluginFallback = async (token: number, track: Track): Promise<boolean> 
   return resolved ? commitResolvedAndHasParsed(token, resolved) : false;
 };
 
+/** 判断 TTML 是否包含逐字时间轴（词级 begin），逐行 TTML 不值得覆盖已有歌词 */
+const isWordLevelTTML = (ttml: string): boolean => {
+  const wordSpans = ttml.match(/<span[^>]*\bbegin\s*=/gi);
+  return (wordSpans?.length ?? 0) > 2;
+};
+
 /** 判断异步 Apple Music 结果是否能够按来源和格式优先级升级当前歌词。 */
 const shouldReplaceWithAppleMusic = (current: LyricData): boolean => {
   if (!current) return true;
@@ -253,10 +264,16 @@ const scheduleAppleMusicUpgrade = (token: number, track: Track, force = false): 
         return;
       }
       const media = useMediaStore();
-      const replace = force || shouldReplaceWithAppleMusic(media.activeLyric);
+      // 只有逐字 AM 歌词才值得覆盖已有歌词；逐行 AM 结果保留现状
+      const wordLevel = isWordLevelTTML(resolved.input.content);
+      const replace =
+        force ||
+        (wordLevel
+          ? shouldReplaceWithAppleMusic(media.activeLyric)
+          : !media.activeLyric && shouldReplaceWithAppleMusic(media.activeLyric));
       logLyric(
         "info",
-        `AM 升级: current=${describeActive()}, force=${force}, replace=${replace}`,
+        `AM 升级: current=${describeActive()}, force=${force}, wordLevel=${wordLevel}, replace=${replace}`,
       );
       if (replace) {
         // 先记录当前有效歌词，避免无效 AM 结果把已有歌词清成 NO-LRC
@@ -394,7 +411,11 @@ const loadPlatformLyric = (
         track,
         online,
         null,
-        choice.source === "platform" ? false : choice.source === "amll" ? choice.platform : undefined,
+        choice.source === "platform"
+          ? false
+          : choice.source === "amll"
+            ? choice.platform
+            : undefined,
         forceQuery,
       );
     } else if (
@@ -409,6 +430,7 @@ const loadPlatformLyric = (
 /** 开启新一轮加载周期 */
 export const beginLoad = (): number => {
   currentToken++;
+  loadStartedAt = performance.now();
   useMediaStore().resetLyricState();
   return currentToken;
 };
@@ -454,8 +476,11 @@ export const loadForTrack = async (detail: TrackDetail | null): Promise<void> =>
     if (token !== currentToken) return;
     if (choice.source === "appleMusic") {
       if (await tryCachedAppleMusic(token, searchTrack)) return;
-      // 手动锁定来源时，不得按照自动排序回退到其他来源。
       scheduleAppleMusicUpgrade(token, searchTrack, true);
+      // AM 未命中时用平台歌词兜底，避免歌词区一直空白；AM 命中后仍会热替换
+      if (isPlatform(track.source)) {
+        await loadPlatformLyric(token, searchTrack, choice, search.forceQuery);
+      }
       return;
     }
     if (choice.source === "auto") {
@@ -585,7 +610,11 @@ const refreshPreference = async (): Promise<void> => {
         searchTrack,
         online,
         local,
-        choice.source === "platform" ? false : choice.source === "amll" ? choice.platform : undefined,
+        choice.source === "platform"
+          ? false
+          : choice.source === "amll"
+            ? choice.platform
+            : undefined,
         search.forceQuery,
       );
       return;

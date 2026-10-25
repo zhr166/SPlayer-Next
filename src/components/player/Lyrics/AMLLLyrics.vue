@@ -489,11 +489,18 @@ const setCurrentTime = (time: number, isSeek?: boolean) => {
 };
 
 /**
- * 强制滚动歌词到指定播放时间。
+ * 强制滚动歌词到指定播放时间
+ *
+ * 切歌与拖动进度时先把弹簧临时调成瞬时，让歌词立刻落到目标位置，
+ * 定位完成后再恢复用户设置的弹簧，避免软弹簧把首帧拖成一秒的缓慢滑动
  * @param time - 播放时间（毫秒）
  */
 const scrollToTime = (time: number): void => {
+  const player = playerRef.value;
+  if (!player) return;
+  player.setLinePosYSpringParams({ mass: 0.1, damping: 0, stiffness: 1, soft: false });
   syncCurrentTime(time, true);
+  requestAnimationFrame(() => requestAnimationFrame(() => syncPlayerOptions(player)));
 };
 
 // 隐藏界面或休眠时调用

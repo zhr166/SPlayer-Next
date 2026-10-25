@@ -10,6 +10,7 @@ import { useThemeStore } from "./stores/theme";
 import { useSettingsStore } from "./stores/settings";
 import { useHotkeyStore } from "./stores/hotkey";
 import { initPlayer, playFiles, restoreLastTrack } from "./core/player";
+import { warmupChinesePronunciation } from "./utils/lyric/hideChinesePronunciation";
 import { handleOrpheus } from "./services/orpheus";
 import { installHotkeyManager } from "./core/hotkey/manager";
 import { vRipple } from "./directives/ripple";
@@ -68,3 +69,6 @@ export const startApplication = (): void => {
     .then(installHotkeyManager)
     .catch((err) => console.error("[hotkey] init failed", err));
 };
+
+// 空闲时预热拼音字典，避免首屏歌词为过滤发音而空白数秒
+requestIdleCallback(() => warmupChinesePronunciation(), { timeout: 3000 });

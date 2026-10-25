@@ -70,6 +70,16 @@ const isMandarinPinyin = (
  * @param lines - 已完成语言判断的歌词
  * @returns 过滤后的展示歌词；关闭设置时应重新从原始内容解析
  */
+/**
+ * 预热拼音字典
+ *
+ * pinyin-pro 首次动态导入需要解析体积可观的字典，冷启动时会让开启
+ * "隐藏中文发音" 的歌词空白数秒，这里在空闲时提前载入
+ */
+export const warmupChinesePronunciation = (): void => {
+  void import("pinyin-pro");
+};
+
 export const hideChinesePronunciation = async (lines: LyricLine[]): Promise<LyricLine[]> => {
   if (
     !lines.some(
