@@ -9,13 +9,9 @@ import {
   type IsolationRendererOptions,
   type TitaniumRendererOptions,
 } from "@applemusic-like-lyrics/core-bg";
-import { getCurrentTime, getFftFrame } from "@/services/playback";
+import { getFftFrame } from "@/services/playback";
 import { acquireFft, releaseFft } from "@/services/fftCapture";
-import {
-  createBassPulseDetector,
-  getBassPulse,
-  toAmllLowFreqVolume,
-} from "@/services/audioFeatures";
+import { getBassPulse, toAmllLowFreqVolume } from "@/services/audioFeatures";
 
 /** 可选的流体背景渲染引擎 */
 export type BackgroundRenderEngine = "mesh" | "isolation" | "pixi" | "titanium";
@@ -154,12 +150,15 @@ const recreateRenderer = () => {
   syncFftCapture();
 };
 
-// 低频起音检测（自适应基线 / 暖机 / 不应期 / 包络衰减）
-const pulseDetector = createBassPulseDetector();
+const BASS_ATTACK = 0.45;
+const BASS_DECAY = 0.14;
+
+// 低频平滑后脉冲
+let smoothedPulse = 0;
 let lastFftFrame: readonly [number[], number[]] = [[], []];
 
 /**
- * 从最新 FFT 帧数据推进起音检测并下发给渲染器
+ * 从最新 FFT 帧数据计算低频音量能量值 [0.0 - 1.0]
  */
 const updateLowFreqVolume = () => {
   const data = getFftFrame();
@@ -167,9 +166,11 @@ const updateLowFreqVolume = () => {
   if (data === lastFftFrame) return;
   lastFftFrame = data;
 
-  const pulse = pulseDetector.update(getBassPulse(data), getCurrentTime());
+  const pulse = getBassPulse(data);
+  const smoothFactor = pulse > smoothedPulse ? BASS_ATTACK : BASS_DECAY;
+  smoothedPulse = smoothedPulse + smoothFactor * (pulse - smoothedPulse);
 
-  bgRenderRef.value?.setLowFreqVolume(toAmllLowFreqVolume(pulse));
+  bgRenderRef.value?.setLowFreqVolume(toAmllLowFreqVolume(smoothedPulse));
 };
 
 const { resume: resumeFftLoop, pause: pauseFftLoop } = useRafFn(updateLowFreqVolume, {
@@ -210,7 +211,7 @@ const syncFftCapture = () => {
   } else {
     stopFftCapture();
     if (!props.enableBeat) {
-      pulseDetector.reset();
+      smoothedPulse = 0;
       lastFftFrame = [[], []];
       bgRenderRef.value?.setLowFreqVolume(1.0);
     }
@@ -243,8 +244,8 @@ watch(
     if (val && bgRenderRef.value) {
       bgRenderRef.value.setAlbum(val, false);
     }
-    // 换封面即换曲，起音检测重新暖机
-    pulseDetector.reset();
+    // 换封面即换曲，丢掉上一首的平滑状态
+    smoothedPulse = 0;
     lastFftFrame = [[], []];
   },
 );

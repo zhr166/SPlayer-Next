@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { AppleMusicBackground, type BackgroundVariant } from "@/modules/apple-music-background";
-import { getCurrentTime, getFftFrame } from "@/services/playback";
+import { getFftFrame } from "@/services/playback";
 import { acquireFft, releaseFft } from "@/services/fftCapture";
-import { createBassPulseDetector, getBassPulse } from "@/services/audioFeatures";
+import { getBassPulse } from "@/services/audioFeatures";
 
 const props = defineProps<{
   album: string;
@@ -21,17 +21,16 @@ const pageVisible = useDocumentVisibility();
 const renderFailed = ref(false);
 let renderer: AppleMusicBackground | undefined;
 let fftAcquired = false;
+let pulse = 0;
 let previousFft: ReturnType<typeof getFftFrame> | undefined;
-
-// 低频起音检测：只响应真正的低频起音，持续贝斯 / 静音 / 切歌 / 拖动都不会乱抽
-const pulseDetector = createBassPulseDetector();
 
 const { resume, pause } = useRafFn(
   () => {
     const fft = getFftFrame();
     if (!fft || fft === previousFft) return;
     previousFft = fft;
-    const pulse = pulseDetector.update(getBassPulse(fft), getCurrentTime());
+    const next = getBassPulse(fft);
+    pulse += (next - pulse) * (next > pulse ? 0.45 : 0.14);
     // 复用原生 FFT 能量输入，沿用参考实现 0.33 的平方脉冲倍率。
     renderer?.setImageScale(1 + 0.33 * pulse * pulse);
   },
@@ -72,7 +71,7 @@ function syncState(): void {
       releaseFft();
       fftAcquired = false;
     }
-    pulseDetector.reset();
+    pulse = 0;
     previousFft = undefined;
     renderer?.setImageScale(1);
   }
@@ -91,8 +90,8 @@ watch(
   () => props.album,
   (album) => {
     void renderer?.setAlbum(album);
-    // 换曲后起音检测重新暖机，避免沿用上一首的基线
-    pulseDetector.reset();
+    // 换曲后丢掉上一首的平滑状态
+    pulse = 0;
     previousFft = undefined;
   },
 );

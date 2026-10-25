@@ -304,18 +304,22 @@ const appearanceCategory: SettingCategory = {
               type: "switch",
               binding: { store: "settings", path: "player.playerBgLightWave" },
               // 光波是 isolation 独有的明度调制；独立 isolation 背景与 isolation 引擎都能用
+              // Apple Music 两种背景不提供 isolation 选项
               visible: () =>
                 useSettingsStore().player.playerBgType === "isolation" ||
-                useSettingsStore().player.playerBgRenderer === "isolation",
+                (useSettingsStore().player.playerBgType === "animation" &&
+                  useSettingsStore().player.playerBgRenderer === "isolation"),
               defaultValue: false,
             },
             {
               key: "playerBgIsolationPalette",
               type: "select",
               binding: { store: "settings", path: "player.playerBgIsolationPalette" },
+              // Apple Music 两种背景不提供 isolation 选项
               visible: () =>
                 useSettingsStore().player.playerBgType === "isolation" ||
-                useSettingsStore().player.playerBgRenderer === "isolation",
+                (useSettingsStore().player.playerBgType === "animation" &&
+                  useSettingsStore().player.playerBgRenderer === "isolation"),
               options: [
                 { value: "auto", labelKey: "settings.playerBgIsolationPalette.auto" },
                 { value: "kmeans", labelKey: "settings.playerBgIsolationPalette.kmeans" },
@@ -327,9 +331,11 @@ const appearanceCategory: SettingCategory = {
               key: "playerBgIsolationDithering",
               type: "switch",
               binding: { store: "settings", path: "player.playerBgIsolationDithering" },
+              // Apple Music 两种背景不提供 isolation 选项
               visible: () =>
                 useSettingsStore().player.playerBgType === "isolation" ||
-                useSettingsStore().player.playerBgRenderer === "isolation",
+                (useSettingsStore().player.playerBgType === "animation" &&
+                  useSettingsStore().player.playerBgRenderer === "isolation"),
               defaultValue: true,
             },
             {
