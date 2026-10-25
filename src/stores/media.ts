@@ -106,7 +106,9 @@ export const useMediaStore = defineStore("media", () => {
         source: activeLyric.value ? toRaw(activeLyric.value) : null,
       };
       // 歌词类型里多了本地格式（lqe/lrcn 等），运行时与 lyric-kit 结构一致
-      window.api.nowPlaying.update(payload as unknown as Parameters<typeof window.api.nowPlaying.update>[0]);
+      window.api.nowPlaying.update(
+        payload as unknown as Parameters<typeof window.api.nowPlaying.update>[0],
+      );
     } catch (error) {
       console.error("[media] syncToMain failed", error);
     }
@@ -218,6 +220,17 @@ export const useMediaStore = defineStore("media", () => {
    * @param source - 歌词源
    * @param input - 主歌词 + 可选翻译 / 音译；传 null 即清空
    */
+  // 当前封面写入 CSS 变量，供弹层做不依赖 backdrop-filter 的模糊底
+  watch(
+    () => track.value?.cover,
+    (cover) => {
+      const root = document.documentElement;
+      if (cover) root.style.setProperty("--s-track-cover", `url("${cover}")`);
+      else root.style.removeProperty("--s-track-cover");
+    },
+    { immediate: true },
+  );
+
   const setLyric = (source: LyricData, input: LyricInput | null): void => {
     const currentTransformToken = ++transformToken;
     let nextLines: LyricLine[] = [];
