@@ -592,8 +592,8 @@ const lyricCategory: SettingCategory = {
           min: 0.1,
           max: 0.9,
           step: 0.05,
-          defaultValue: 0.35,
-          marks: { 0.1: "0.1", 0.35: "0.35", 0.9: "0.9" },
+          defaultValue: 0.5,
+          marks: { 0.1: "0.1", 0.5: "0.5", 0.9: "0.9" },
         },
         {
           key: "wordFadeWidth",

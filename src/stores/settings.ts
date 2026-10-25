@@ -228,7 +228,7 @@ export const useSettingsStore = defineStore(
       springMass: 1,
       springDamping: 20,
       springStiffness: 50,
-      alignPosition: 0.35,
+      alignPosition: 0.5,
       alignment: "auto",
       wordFadeWidth: 0.5,
       inactiveAlpha: 0.2,
@@ -466,6 +466,10 @@ export const useSettingsStore = defineStore(
         }
         if (typeof lyric.raiseAlignPositionOnOverlap !== "boolean") {
           lyric.raiseAlignPositionOnOverlap = false;
+        }
+        // 旧的 0.35 走 top 锚点，换行时几乎不动；迁到 0.5 以启用 center 锚点
+        if (lyric.alignPosition === 0.35) {
+          lyric.alignPosition = 0.5;
         }
         // 旧的默认弹簧（0.9/15/90）太硬，迁到官方 lyric-dom 的过阻尼参数
         if (
