@@ -17,7 +17,9 @@ import {
   SPRING_PRESETS,
 } from "@/types/settings";
 import type { SystemConfig, LocaleCode } from "@shared/types/settings";
+import { usePreferredReducedMotion } from "@vueuse/core";
 import { defaultSystemConfig } from "@shared/defaults/settings";
+import { DEFAULT_SKIP_TRACK_KEYWORDS } from "@/utils/preset/skipKeywords";
 import { setByPath } from "@shared/utils/path";
 
 /**
@@ -123,11 +125,15 @@ export const useSettingsStore = defineStore(
       rememberCloseChoice: false,
       fontFamily: "",
       showPerformanceMonitor: false,
+      seamlessTransition: false,
+      songListStyle: "comfortable",
+      reduceMotion: false,
     });
 
     /** 播放器 */
     const player = reactive<PlayerSettings>({
       playerBgType: "blur",
+      playerBgRenderer: "mesh",
       playerBgFps: 30,
       playerBgFlowSpeed: 4,
       playerBgRenderScale: 0.5,
@@ -154,6 +160,10 @@ export const useSettingsStore = defineStore(
       showLyricInBar: true,
       preloadNextTrack: false,
       searchPlayBehavior: "current",
+      rememberDeviceVolume: false,
+      transitionMode: "none",
+      transitionPreference: "standard",
+      songListPlayBehavior: "current",
     });
 
     /** 强迫症设置 */
@@ -163,6 +173,8 @@ export const useSettingsStore = defineStore(
       hideVipTag: false,
       hideQualityTag: false,
       showSubtitle: true,
+      skipKeywordsSongs: false,
+      skipTrackKeywords: [...DEFAULT_SKIP_TRACK_KEYWORDS],
     });
 
     /** 歌词 */
@@ -208,6 +220,7 @@ export const useSettingsStore = defineStore(
       springDamping: 15,
       springStiffness: 90,
       alignPosition: 0.35,
+      alignment: "auto",
       wordFadeWidth: 0.5,
       inactiveAlpha: 0.2,
       enableExcludeLyrics: true,
@@ -353,6 +366,12 @@ export const useSettingsStore = defineStore(
       }
     };
 
+    /** 减少动态效果：用户设置或系统偏好二选一 */
+    const systemReducedMotion = usePreferredReducedMotion();
+    const reducedMotion = computed(
+      () => appearance.reduceMotion || systemReducedMotion.value === "reduce",
+    );
+
     return {
       locale,
       appearance,
@@ -360,6 +379,7 @@ export const useSettingsStore = defineStore(
       preset,
       lyric,
       system,
+      reducedMotion,
       isDesktopLyricOpen,
       isDynamicIslandOpen,
       isTaskbarLyricOpen,

@@ -105,7 +105,8 @@ export const useMediaStore = defineStore("media", () => {
         lyric: toRaw(parsedLyric.value),
         source: activeLyric.value ? toRaw(activeLyric.value) : null,
       };
-      window.api.nowPlaying.update(payload);
+      // 歌词类型里多了本地格式（lqe/lrcn 等），运行时与 lyric-kit 结构一致
+      window.api.nowPlaying.update(payload as unknown as Parameters<typeof window.api.nowPlaying.update>[0]);
     } catch (error) {
       console.error("[media] syncToMain failed", error);
     }

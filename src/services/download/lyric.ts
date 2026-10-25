@@ -5,7 +5,8 @@
  */
 
 import type { Track } from "@shared/types/player";
-import type { LyricFormat, LyricInput } from "@shared/types/lyrics";
+import type { LyricFormat, LyricInput } from "lyric-kit";
+
 import { isPlatform } from "@shared/types/platform";
 import { buildDownloadLyric } from "@/utils/lyric/serialize";
 import {
@@ -27,10 +28,11 @@ export interface DownloadLyric extends LyricInput {
 }
 
 /** 转为下载歌词结构 */
-const toDownloadLyric = (lyric: ResolvedLyric): DownloadLyric => ({
-  format: lyric.source.format,
-  ...lyric.input,
-});
+const toDownloadLyric = (lyric: ResolvedLyric): DownloadLyric =>
+  ({
+    format: lyric.source.format,
+    ...lyric.input,
+  }) as DownloadLyric;
 
 /** 判断候选歌词是否能被下载序列化使用 */
 const toUsableDownloadLyric = (lyric: ResolvedLyric | null): DownloadLyric | null => {

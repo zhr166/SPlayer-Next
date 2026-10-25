@@ -1,6 +1,8 @@
 import type { LyricFormat } from "@shared/types/lyrics";
 import { DEFAULT_LYRIC_FORMAT_ORDER as DEFAULT_LYRIC_FORMAT_ORDER_SHARED } from "@shared/types/lyrics";
 import type { Platform } from "@shared/types/platform";
+import type { TransitionPreference } from "@shared/types/player";
+import type { LyricAlignment } from "lyric-dom";
 import type { QualityLevel } from "@/utils/quality";
 
 /** 播放器背景类型 */
@@ -21,6 +23,15 @@ export type TimeFormat = "current-total" | "remaining-total" | "current-remainin
  * - all: 播放全部
  */
 export type SearchPlayBehavior = "current" | "all";
+
+/** 列表点击播放的行为 */
+export type PlayBehavior = "current" | "all";
+
+/** 歌曲列表样式 */
+export type SongListStyle = "comfortable" | "compact";
+
+/** 流体背景渲染引擎 */
+export type PlayerBgRenderer = "mesh" | "isolation" | "pixi";
 
 /**
  * 歌词来源偏好
@@ -212,6 +223,8 @@ export interface LyricSettings {
   springStiffness: number;
   /** 激活行对齐位置（0~1） */
   alignPosition: number;
+  /** 歌词水平对齐方式 */
+  alignment: LyricAlignment;
   /** 逐字掩码渐变宽度 */
   wordFadeWidth: number;
   /** 非激活行透明度 */
@@ -249,6 +262,8 @@ export interface LyricSettings {
 export interface PlayerSettings {
   /** 播放器背景类型 */
   playerBgType: PlayerBgType;
+  /** 流体背景渲染引擎 */
+  playerBgRenderer: PlayerBgRenderer;
   /** 流体背景帧率（fps） */
   playerBgFps: number;
   /** 流体背景流动速度 */
@@ -275,6 +290,14 @@ export interface PlayerSettings {
   outputDevice: string | null;
   /** 切换输出设备时暂停播放 */
   pauseOnDeviceSwitch: boolean;
+  /** 是否为不同输出设备独立记忆音量 */
+  rememberDeviceVolume: boolean;
+  /** 切歌过渡方式 */
+  transitionMode: "none" | "crossfade";
+  /** 切歌过渡激进程度 */
+  transitionPreference: TransitionPreference;
+  /** 歌曲列表点击播放行为 */
+  songListPlayBehavior: PlayBehavior;
   /** 是否启用音乐频谱可视化 */
   enableSpectrum: boolean;
   /** 频谱单条宽度（px） */
@@ -337,6 +360,12 @@ export interface AppearanceSettings {
   fontFamily: string;
   /** 性能监视器悬浮卡片 */
   showPerformanceMonitor: boolean;
+  /** 页面切换无缝过渡 */
+  seamlessTransition: boolean;
+  /** 歌曲列表样式 */
+  songListStyle: SongListStyle;
+  /** 减少动态效果 */
+  reduceMotion: boolean;
 }
 
 /** 强迫症设置 */
@@ -351,4 +380,8 @@ export interface PresetSettings {
   hideQualityTag: boolean;
   /** 显示歌曲副标题（别名） */
   showSubtitle: boolean;
+  /** 列表是否跳过关键词命中的歌曲 */
+  skipKeywordsSongs: boolean;
+  /** 跳过命中关键词的歌曲所用的关键词 */
+  skipTrackKeywords: string[];
 }

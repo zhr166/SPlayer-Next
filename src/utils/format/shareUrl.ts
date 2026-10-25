@@ -79,6 +79,7 @@ export const getCollectionShareUrl = (
       kugou: `https://www.kugou.com/album/info/${collection.id}/`,
       streaming: null,
       local: null,
+      plugin: null,
     },
     playlist: {
       netease: `https://music.163.com/#/playlist?id=${collection.id}`,
@@ -86,6 +87,7 @@ export const getCollectionShareUrl = (
       kugou: `https://www.kugou.com/songlist/${collection.id}/`,
       streaming: null,
       local: null,
+      plugin: null,
     },
     radio: {
       netease: `https://music.163.com/#/djradio?id=${collection.id}`,
@@ -93,6 +95,7 @@ export const getCollectionShareUrl = (
       kugou: `https://www.kugou.com/song/#fm_id=${collection.id}`,
       streaming: null,
       local: null,
+      plugin: null,
     },
     cloud: {
       netease: null,
@@ -100,6 +103,7 @@ export const getCollectionShareUrl = (
       kugou: null,
       streaming: null,
       local: null,
+      plugin: null,
     },
   };
   return urls[collection.type]?.[collection.source] ?? null;
