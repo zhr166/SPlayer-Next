@@ -63,6 +63,8 @@ const toTrack = (
     album: { id: song.albumId, name: song.albumName, cover: song.coverUrl },
     duration: song.durationMs,
     cover: song.coverUrl,
+    // 插件解析失败时用它兜底，保证至少能播 30 秒试听
+    previewUrl: song.previewUrl,
   };
 
   if (plugin) {
@@ -86,7 +88,7 @@ const toTrack = (
     };
   }
 
-  return { ...common, source: "appleMusic", previewUrl: song.previewUrl };
+  return { ...common, source: "appleMusic" };
 };
 
 /**

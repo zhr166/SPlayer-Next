@@ -314,6 +314,11 @@ export const resolveTrackSource = async (
   if (track.source === "plugin") {
     const resolved = await resolveByPlugin(track, songLevel, options.skipPluginIds);
     if (!resolved.ok) {
+      // Apple Music 目录曲目：插件上游不可用时退回 30 秒试听，别让整首歌直接失败
+      if (track.previewUrl) {
+        console.warn("[audio-source] plugin resolve failed, fallback to preview:", track.id);
+        return { source: track.previewUrl, fromCache: false, provider: "trial" };
+      }
       reportLoadError(resolved.errorCode, options);
       return null;
     }
