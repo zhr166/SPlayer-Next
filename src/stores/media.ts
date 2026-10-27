@@ -237,6 +237,7 @@ export const useMediaStore = defineStore("media", () => {
     const settings = useSettingsStore();
     if (source && input) {
       try {
+        const startedAt = performance.now();
         const lines = parseLyric(input, source.format, settings.locale, {
           detectBackground: settings.lyric.detectBackgroundLyrics,
           fallbackTranslation: settings.lyric.fallbackTranslation,
@@ -251,6 +252,9 @@ export const useMediaStore = defineStore("media", () => {
           applyProfanityUncensor(nextLines);
         }
         applyLyricLanguages(nextLines);
+        console.info(
+          `[perf] setLyric parse=${Math.round(performance.now() - startedAt)}ms lines=${nextLines.length}`,
+        );
       } catch (e) {
         console.error("[media] parse lyric failed:", e);
         nextLines = [];
@@ -260,8 +264,8 @@ export const useMediaStore = defineStore("media", () => {
     const hasContent = nextLines.length > 0;
     activeLyric.value = hasContent ? source : null;
     lyricContent.value = hasContent ? input : null;
-    // 首次字典加载期间不先广播未过滤发音，避免多个歌词窗口短暂闪出拼音。
-    parsedLyric.value = settings.lyric.hideChinesePronunciation ? [] : nextLines;
+    // 先让歌词立刻上屏，过滤发音在后台完成后替换；避免开着「隐藏中文发音」时整页空白等待
+    parsedLyric.value = nextLines;
     if (onlineCreators.value) {
       lyricAuthors.value = onlineCreators.value;
       lyricAuthorKind.value = "creator";
@@ -281,7 +285,7 @@ export const useMediaStore = defineStore("media", () => {
       lyricAuthorKind.value = null;
     }
     lyricIndex.value = -1;
-    lyricLoading.value = hasContent && settings.lyric.hideChinesePronunciation;
+    lyricLoading.value = false;
     syncToMain();
 
     // 展示过滤先于简繁转换，统一同步给主播放器和独立歌词窗口；原始输入不改写。
