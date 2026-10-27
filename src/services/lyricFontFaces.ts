@@ -25,13 +25,13 @@ const CHINESE_RANGES = "U+3000-303F,U+3400-4DBF,U+4E00-9FFF,U+F900-FAFF,U+FF00-F
 /** 常见系统字体别名：local() 需要精确族名，链里写简称时用这些兜底 */
 const SCRIPT_FALLBACK_FAMILIES: Record<string, string[]> = {
   latin: ["SF Pro", "Segoe UI", "Helvetica Neue", "Arial"],
-  japanese: ["Hiragino Sans GB W6", "Hiragino Sans GB", "Hiragino Sans", "Yu Gothic UI", "Meiryo"],
+  japanese: ["Hiragino Sans GB", "Hiragino Sans GB W6", "Hiragino Sans", "Yu Gothic UI", "Meiryo"],
   korean: ["Apple SD Gothic Neo", "Malgun Gothic"],
   chinese: [
+    ".苹方-简",
     "PingFang SC",
     ".PingFang SC",
     "苹方-简",
-    "萍方-简",
     "Microsoft YaHei",
     "Noto Sans CJK SC",
   ],

@@ -284,38 +284,69 @@ const handleLineClick = (e: Event) => {
 };
 
 // 为所有主歌词行设置 html lang 属性
-/**
- * 取字体链的首个可用字体，返回带引号的家族名
- * @param chain - 逗号分隔的字体链
- * @returns 首个字体家族名，空链返回空串
- */
-const firstFamily = (chain: string): string => {
-  const name = (chain ?? "")
+/** 只含西文字形的字体，不能出现在语种字体链里，否则会抢走假名/汉字 */
+const LATIN_ONLY_FAMILIES = new Set([
+  "sf pro",
+  "sf pro display",
+  "sf pro text",
+  "segoe ui",
+  "helvetica",
+  "helvetica neue",
+  "arial",
+  "roboto",
+]);
+
+/** 把逗号分隔的字体链拆成干净家族名数组 */
+const parseChain = (chain: string): string[] =>
+  (chain ?? "")
     .split(",")
     .map((item) => item.trim().replace(/^["']|["']$/g, ""))
-    .filter(Boolean)[0];
-  return name ? `"${name}"` : "";
+    .filter(Boolean);
+
+/** 语种字体缺字时的兜底族名（按本机实际注册名） */
+const SCRIPT_ALIASES: Record<string, string[]> = {
+  ja: ["Hiragino Sans GB", "Hiragino Sans GB W6", "Hiragino Sans", "Yu Gothic UI"],
+  ko: ["Apple SD Gothic Neo", "Malgun Gothic"],
+  zh: [".苹方-简", "PingFang SC", ".PingFang SC", "苹方-简", "Microsoft YaHei"],
 };
 
 /**
  * 按行语言组合行级字体栈
  *
  * 西文字体放最前，字母命中它；假名/谚文/汉字在它里面没有字形，会回退到后面的语种字体，
- * 因此同一行内中英混排也能各用各的。这等价于旧版"整行按语言取字体"，额外获得了英文用西文字体。
+ * 因此同一行内中英混排也能各用各的。语种链里会剔除纯西文字体并追加本机兜底族名。
  * @param language - 该行语言标记
- * @returns 可直接写入 fontFamily 的字体栈；无语种字体时退回西文字体
+ * @returns 可直接写入 fontFamily 的字体栈
  */
 const lineFontStack = (language?: string): string => {
   const tag = (language ?? "").toLowerCase();
   const lyric = settings.lyric;
-  const scriptFamily = tag.startsWith("ja")
-    ? lyric.fontFamilyJapanese
+  const scriptKey = tag.startsWith("ja")
+    ? "ja"
     : tag.startsWith("ko")
-      ? lyric.fontFamilyKorean
+      ? "ko"
       : tag.startsWith("zh") || tag === "yue"
-        ? lyric.fontFamilyChinese
+        ? "zh"
         : "";
-  return [firstFamily(lyric.fontFamilyLatin), firstFamily(scriptFamily)].filter(Boolean).join(", ");
+  const latin = parseChain(lyric.fontFamilyLatin)[0] ?? "";
+  const scriptChain = scriptKey
+    ? parseChain(
+        scriptKey === "ja"
+          ? lyric.fontFamilyJapanese
+          : scriptKey === "ko"
+            ? lyric.fontFamilyKorean
+            : lyric.fontFamilyChinese,
+      )
+    : [];
+  const families = [
+    ...(latin ? [latin] : []),
+    ...scriptChain.filter((name) => !LATIN_ONLY_FAMILIES.has(name.toLowerCase())),
+    ...(scriptKey ? SCRIPT_ALIASES[scriptKey] : []),
+  ];
+  // 去重并加引号，带前导点的隐藏族名（如 .苹方-简）必须加引号
+  return Array.from(new Set(families))
+    .map((name) => `"${name}"`)
+    .join(", ");
 };
 
 const processLyricLanguage = (player = playerRef.value) => {
