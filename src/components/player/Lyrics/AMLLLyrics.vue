@@ -116,6 +116,8 @@ const settings = useSettingsStore();
 const status = useStatusStore();
 
 const wrapperRef = ref<HTMLDivElement | null>(null);
+/** 容器尺寸监听，尺寸变化后需要重排歌词 */
+let resizeObserver: ResizeObserver | undefined;
 // Core 实例必须保留原始身份：挂载时用它判定异步等待后实例是否已被卸载或替换。
 const playerRef = shallowRef<CoreLyricPlayer>();
 const bottomLineEl = ref<HTMLElement>();
@@ -400,10 +402,27 @@ onMounted(async () => {
   player.update(0);
   initialized.value = true;
   contentVisible.value = true;
+
+  // 抽屉展开动画期间容器高度为 0，排版会把歌词排到可视区外；等一帧后按真实尺寸重排
+  await nextFrame();
+  if (playerRef.value !== player) return;
+  void player.calcLayout();
+  player.update(0);
+
+  // 尺寸变化（窗口缩放、布局切换）同样需要重排
+  resizeObserver = new ResizeObserver(() => {
+    const current = playerRef.value;
+    if (!current) return;
+    void current.calcLayout();
+    current.update(0);
+  });
+  if (wrapperRef.value) resizeObserver.observe(wrapperRef.value);
 });
 
 onUnmounted(() => {
   document.removeEventListener("visibilitychange", handleVisibility);
+  resizeObserver?.disconnect();
+  resizeObserver = undefined;
   pauseRaf();
   initialized.value = false;
   contentVisible.value = false;
