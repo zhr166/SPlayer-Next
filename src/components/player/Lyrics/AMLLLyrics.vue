@@ -516,32 +516,30 @@ onMounted(async () => {
   player.calcLayout(LayoutReason.ConfigChange);
   player.update(0);
 
-  // 首次挂载后抽屉动画结束时再下发一次歌词：重开能恢复正常，说明重新下发即可修复首次空白
+  // 首行若被排到可视区之外，说明首次布局基于未稳定的容器尺寸，强制按当前进度重算一次
   window.setTimeout(() => {
     const current = playerRef.value;
-    const lines = processedLyrics.value;
-    if (!current || lines.length === 0) return;
-    current.setLyricLines(lines, getCurrentTime() + status.lyricOffsetMs);
-    current.calcLayout(LayoutReason.ConfigChange);
-    current.update(0);
-    current.resume();
-    void window.api.lyrics.log("info", "[perf] amll reapply after mount");
-  }, 600);
-
-  // 诊断：记录容器尺寸与首行位置，用于定位首次打开空白
-  void window.api.lyrics.log(
-    "info",
-    `[perf] amll layout h=${wrapperRef.value?.clientHeight ?? -1} w=${wrapperRef.value?.clientWidth ?? -1} initial=${Math.round(props.initialTime)}`,
-  );
-  window.setTimeout(() => {
     const host = wrapperRef.value;
-    if (!host) return;
+    if (!current || !host) return;
+    const height = host.clientHeight;
     const line = host.querySelector<HTMLElement>('[class*="lyricLine"]');
+    const offset = line ? new DOMMatrixReadOnly(getComputedStyle(line).transform).m42 : Number.NaN;
+    const summary = current.getTimelineSummary();
     void window.api.lyrics.log(
       "info",
-      `[perf] amll check h=${host.clientHeight} line=${line ? `transform=${line.style.transform || "-"} opacity=${line.style.opacity || "-"}` : "none"}`,
+      `[perf] amll probe h=${height} offset0=${Math.round(offset)} scrollTo=${summary.scrollToIndex} hot=${summary.highlighted}`,
     );
-  }, 800);
+    if (!Number.isFinite(offset) || Math.abs(offset) > height) {
+      // 越界则按当前播放位置重算，避免整块歌词停在视口外
+      current.setCurrentTime(getCurrentTime() + status.lyricOffsetMs, true);
+      current.calcLayout(LayoutReason.Seek);
+      current.update(0);
+      void window.api.lyrics.log(
+        "info",
+        `[perf] amll heal offset0=${Math.round(offset)} h=${height}`,
+      );
+    }
+  }, 700);
 
   // 尺寸变化（窗口缩放、布局切换）同样需要重排
   resizeObserver = new ResizeObserver(() => {

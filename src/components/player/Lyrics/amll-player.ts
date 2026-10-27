@@ -61,6 +61,15 @@ export class SPlayerLyricPlayer extends LyricPlayer {
     };
   }
 
+  /**
+   * 读取当前时间线快照的摘要，供外部做排版自检
+   * @returns 滚动目标索引与高亮行数
+   */
+  getTimelineSummary(): { scrollToIndex: number; highlighted: number } {
+    const snapshot = this.timelineController.getSnapshot();
+    return { scrollToIndex: snapshot.scrollToIndex, highlighted: snapshot.highlightedGroups.size };
+  }
+
   /** 按当前配置重排（0.6 需要显式传入触发原因） */
   relayoutForConfig(): void {
     this.calcLayout(LayoutReason.ConfigChange);
