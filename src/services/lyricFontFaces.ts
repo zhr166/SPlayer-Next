@@ -22,6 +22,21 @@ const KOREAN_RANGES = "U+1100-11FF,U+3130-318F,U+AC00-D7AF";
 /** 汉字与中文标点：简体、繁体、扩展 A、兼容区、全角符号 */
 const CHINESE_RANGES = "U+3000-303F,U+3400-4DBF,U+4E00-9FFF,U+F900-FAFF,U+FF00-FF65";
 
+/** 常见系统字体别名：local() 需要精确族名，链里写简称时用这些兜底 */
+const SCRIPT_FALLBACK_FAMILIES: Record<string, string[]> = {
+  latin: ["SF Pro", "Segoe UI", "Helvetica Neue", "Arial"],
+  japanese: ["Hiragino Sans GB W6", "Hiragino Sans GB", "Hiragino Sans", "Yu Gothic UI", "Meiryo"],
+  korean: ["Apple SD Gothic Neo", "Malgun Gothic"],
+  chinese: [
+    "PingFang SC",
+    ".PingFang SC",
+    "苹方-简",
+    "萍方-简",
+    "Microsoft YaHei",
+    "Noto Sans CJK SC",
+  ],
+};
+
 /** 汉字区兜底族名：苹方在 Windows 上注册为带前导点的隐藏族名 */
 const HAN_FALLBACK_FAMILIES = [
   ".PingFang SC",
@@ -67,14 +82,29 @@ export const applyLyricFontFaces = (lyric: LyricSettings): void => {
     }
   };
 
+  // 每个码位区间只取字体链首个字体，避免第二个字体（如 SF Pro）抢走假名/谚文字形
+  const first = (value: string): string => parseFontChain(value)[0] ?? "";
+  const addWithFallback = (family: string, value: string, ranges: string, key: string): void => {
+    addRule(family, first(value), ranges);
+    for (const alias of SCRIPT_FALLBACK_FAMILIES[key]) {
+      rules.push(
+        `@font-face{font-family:"${family}";src:local("${escapeFontName(alias)}");unicode-range:${ranges};}`,
+      );
+    }
+  };
   for (const family of [LYRIC_SCRIPT_FONT_FAMILY_ZH, LYRIC_SCRIPT_FONT_FAMILY_JA]) {
-    addRule(family, lyric.fontFamilyLatin, LATIN_RANGES);
-    addRule(family, lyric.fontFamilyJapanese, JAPANESE_RANGES);
-    addRule(family, lyric.fontFamilyKorean, KOREAN_RANGES);
+    addWithFallback(family, lyric.fontFamilyLatin, LATIN_RANGES, "latin");
+    addWithFallback(family, lyric.fontFamilyJapanese, JAPANESE_RANGES, "japanese");
+    addWithFallback(family, lyric.fontFamilyKorean, KOREAN_RANGES, "korean");
   }
   // 日语行的汉字用日文字体，其余行的汉字用中文字体（苹方）
-  addRule(LYRIC_SCRIPT_FONT_FAMILY_ZH, lyric.fontFamilyChinese, CHINESE_RANGES);
-  addRule(LYRIC_SCRIPT_FONT_FAMILY_JA, lyric.fontFamilyJapanese, CHINESE_RANGES);
+  addWithFallback(LYRIC_SCRIPT_FONT_FAMILY_ZH, lyric.fontFamilyChinese, CHINESE_RANGES, "chinese");
+  addWithFallback(
+    LYRIC_SCRIPT_FONT_FAMILY_JA,
+    lyric.fontFamilyJapanese,
+    CHINESE_RANGES,
+    "japanese",
+  );
   // 苹方族名带前导点，用户无法在列表里选中，这里按族名兜底
   for (const family of [LYRIC_SCRIPT_FONT_FAMILY_ZH, LYRIC_SCRIPT_FONT_FAMILY_JA]) {
     for (const name of HAN_FALLBACK_FAMILIES) {

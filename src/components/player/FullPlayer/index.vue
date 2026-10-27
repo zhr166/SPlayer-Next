@@ -150,6 +150,17 @@ const { start: startTick, stop: stopTick } = usePlaybackTime((currentMs) => {
 });
 
 /** 展开后 */
+// 展开瞬间就挂载歌词组件：过渡结束后再挂载会让首次打开白等半秒以上
+watch(
+  () => status.isPlayerExpanded,
+  (expanded) => {
+    if (!expanded) return;
+    initialLyricTimeMs.value = getCurrentTime() + status.lyricOffsetMs;
+    lyricMounted.value = true;
+  },
+  { flush: "sync" },
+);
+
 const onAfterEnter = () => {
   initialLyricTimeMs.value = getCurrentTime() + status.lyricOffsetMs;
   lyricMounted.value = true;
