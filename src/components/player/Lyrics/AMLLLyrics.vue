@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { LayoutAlignAnchor, LayoutReason } from "@applemusic-like-lyrics/core";
+import {
+  LYRIC_SCRIPT_FONT_FAMILY_JA,
+  LYRIC_SCRIPT_FONT_FAMILY_ZH,
+} from "@/services/lyricFontFaces";
 import type { LyricLine } from "@shared/types/lyrics";
 import type { LargerLyricText, LyricFloatAnimationIntensity } from "@/types/settings";
 import { SPlayerLyricPlayer as CoreLyricPlayer } from "./amll-player";
@@ -117,6 +121,32 @@ const settings = useSettingsStore();
 const status = useStatusStore();
 
 const wrapperRef = ref<HTMLDivElement | null>(null);
+/**
+ * 歌词容器字体栈
+ *
+ * 0.6 的歌词行使用 CSS Modules 哈希类名，无法再用类名或 :lang 选择器挂字体，
+ * 这里在容器上给一条完整字体栈：脚本字体族负责按码位分流西文/假名/谚文/汉字，
+ * 后面的语种字体链作为缺字回退。
+ */
+const lyricFontStack = computed(() => {
+  const lyric = settings.lyric;
+  const chain = (value: string): string[] =>
+    (value ?? "")
+      .split(",")
+      .map((name) => name.trim().replace(/^["']|["']$/g, ""))
+      .filter(Boolean)
+      .map((name) => `"${name}"`);
+  return [
+    `"${LYRIC_SCRIPT_FONT_FAMILY_ZH}"`,
+    `"${LYRIC_SCRIPT_FONT_FAMILY_JA}"`,
+    ...chain(lyric.fontFamilyLatin),
+    ...chain(lyric.fontFamilyJapanese),
+    ...chain(lyric.fontFamilyChinese),
+    ...chain(lyric.fontFamilyKorean),
+    ...chain(lyric.fontFamily),
+  ].join(", ");
+});
+
 /** 容器尺寸监听，尺寸变化后需要重排歌词 */
 let resizeObserver: ResizeObserver | undefined;
 // Core 实例必须保留原始身份：挂载时用它判定异步等待后实例是否已被卸载或替换。
@@ -599,7 +629,12 @@ defineExpose({
 </script>
 
 <template>
-  <div ref="wrapperRef" class="amll-lyrics-container" :class="contentVisible ? 'is-visible' : ''" />
+  <div
+    ref="wrapperRef"
+    class="amll-lyrics-container"
+    :class="contentVisible ? 'is-visible' : ''"
+    :style="{ fontFamily: lyricFontStack }"
+  />
   <Teleport v-if="bottomLineEl" :to="bottomLineEl">
     <slot name="bottom" />
   </Teleport>
