@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { LayoutAlignAnchor, LayoutReason } from "@applemusic-like-lyrics/core";
 import type { LyricLine } from "@shared/types/lyrics";
 import type { LargerLyricText, LyricFloatAnimationIntensity } from "@/types/settings";
 import { SPlayerLyricPlayer as CoreLyricPlayer } from "./amll-player";
@@ -130,7 +131,7 @@ const isFrozen = ref(false);
 // 冻结期间缓存的待应用歌词
 let pendingLyrics: LyricLine[] | null = null;
 let lastAlignPosition: number | undefined;
-let lastAlignAnchor: "center" | "top" | undefined;
+let lastAlignAnchor: LayoutAlignAnchor | undefined;
 // 页面隐藏状态的响应式跟踪
 const isPageHidden = ref(false);
 // 之前隐藏的标记，用于检测从隐藏恢复的时刻
@@ -163,13 +164,13 @@ const syncAlignPosition = (): void => {
           overlap.overlapDuration,
         )
       : props.alignPosition;
-  const alignAnchor = props.alignPosition > 0.4 ? "center" : "top";
+  const alignAnchor = props.alignPosition > 0.4 ? LayoutAlignAnchor.Center : LayoutAlignAnchor.Top;
   if (lastAlignPosition === alignPosition && lastAlignAnchor === alignAnchor) return;
   lastAlignPosition = alignPosition;
   lastAlignAnchor = alignAnchor;
   player.setAlignPosition(alignPosition);
   player.setAlignAnchor(alignAnchor);
-  void player.calcLayout();
+  player.calcLayout(LayoutReason.ConfigChange);
 };
 
 /** 同步时间后更新重叠段布局，确保新对齐点立即生效。 */
@@ -406,7 +407,7 @@ onMounted(async () => {
   // 抽屉展开动画期间容器高度为 0，排版会把歌词排到可视区外；等一帧后按真实尺寸重排
   await nextFrame();
   if (playerRef.value !== player) return;
-  void player.calcLayout();
+  player.calcLayout(LayoutReason.ConfigChange);
   player.update(0);
 
   // 首次挂载后抽屉动画结束时再下发一次歌词：重开能恢复正常，说明重新下发即可修复首次空白
@@ -415,7 +416,7 @@ onMounted(async () => {
     const lines = processedLyrics.value;
     if (!current || lines.length === 0) return;
     current.setLyricLines(lines, getCurrentTime() + status.lyricOffsetMs);
-    void current.calcLayout();
+    current.calcLayout(LayoutReason.ConfigChange);
     current.update(0);
     current.resume();
     void window.api.lyrics.log("info", "[perf] amll reapply after mount");
@@ -440,7 +441,7 @@ onMounted(async () => {
   resizeObserver = new ResizeObserver(() => {
     const current = playerRef.value;
     if (!current) return;
-    void current.calcLayout();
+    current.calcLayout(LayoutReason.ConfigChange);
     current.update(0);
   });
   if (wrapperRef.value) resizeObserver.observe(wrapperRef.value);

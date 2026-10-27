@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import { mount, type VueWrapper } from "@vue/test-utils";
-import { LyricPlayer } from "@applemusic-like-lyrics/core";
+import { LayoutReason, LyricPlayer } from "@applemusic-like-lyrics/core";
 import type { LyricLine } from "@shared/types/lyrics";
 import AMLLLyrics from "./AMLLLyrics.vue";
 import { promotePronunciation } from "./romanization";
@@ -323,15 +323,15 @@ describe("AMLL 多行同亮抬高", () => {
       const dots = vi.spyOn(internal.interludeDots, "setTransform");
       player.setCurrentTime(500, true);
       player.setCurrentTime(1500);
-      await player.calcLayout();
+      player.calcLayout(LayoutReason.ConfigChange);
       const expected = 280 - (anchor === "center" ? 13 : anchor === "bottom" ? 26 : 0);
       expect(dots.mock.calls.at(-1)?.[1]).toBeCloseTo(expected);
       player.setCurrentTime(1500, true);
-      await player.calcLayout();
+      player.calcLayout(LayoutReason.ConfigChange);
       expect(dots.mock.calls.at(-1)?.[1]).toBeCloseTo(expected);
       player.setCurrentTime(10500);
       const count = dots.mock.calls.length;
-      await player.calcLayout();
+      player.calcLayout(LayoutReason.ConfigChange);
       expect(dots).toHaveBeenCalledTimes(count);
     },
   );

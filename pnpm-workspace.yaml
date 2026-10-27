@@ -28,6 +28,3 @@ overrides:
 
 
 nodeLinker: hoisted
-
-patchedDependencies:
-  "@applemusic-like-lyrics/core@0.5.2": patches/@applemusic-like-lyrics__core@0.5.2.patch
