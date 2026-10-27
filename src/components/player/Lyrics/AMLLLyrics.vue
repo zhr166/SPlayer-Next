@@ -374,7 +374,8 @@ onMounted(async () => {
     player.setLyricLines(prepared, props.initialTime);
     syncCurrentTime(props.initialTime, true);
     processLyricLanguage(player);
-    console.info(
+    void window.api.lyrics.log(
+      "info",
       `[perf] amll mount prepare=${Math.round(preparedAt - startedAt)}ms setLines=${Math.round(performance.now() - preparedAt)}ms lines=${prepared.length}`,
     );
   } else if (Number.isFinite(props.initialTime) && props.initialTime >= 0) {
@@ -387,7 +388,10 @@ onMounted(async () => {
     const startedAt = performance.now();
     player.setLyricLines(pendingLyrics, getCurrentTime() + status.lyricOffsetMs);
     pendingLyrics = null;
-    console.info(`[perf] amll switchLines=${Math.round(performance.now() - startedAt)}ms`);
+    void window.api.lyrics.log(
+      "info",
+      `[perf] amll switchLines=${Math.round(performance.now() - startedAt)}ms`,
+    );
     processLyricLanguage(player);
     await nextFrame();
     if (playerRef.value !== player) return;

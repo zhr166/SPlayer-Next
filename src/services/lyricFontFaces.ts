@@ -84,11 +84,15 @@ export const applyLyricFontFaces = (lyric: LyricSettings): void => {
     }
   }
 
+  const css = rules.join("\n");
   let styleEl = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
   if (!styleEl) {
     styleEl = document.createElement("style");
     styleEl.id = STYLE_ID;
     document.head.appendChild(styleEl);
+  } else if (styleEl.textContent === css) {
+    // 内容没变就不要再写，重写会让浏览器作废已解析的本机字体，导致每次进播放页都重新解析
+    return;
   }
-  styleEl.textContent = rules.join("\n");
+  styleEl.textContent = css;
 };

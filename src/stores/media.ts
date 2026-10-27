@@ -252,7 +252,8 @@ export const useMediaStore = defineStore("media", () => {
           applyProfanityUncensor(nextLines);
         }
         applyLyricLanguages(nextLines);
-        console.info(
+        void window.api.lyrics.log(
+          "info",
           `[perf] setLyric parse=${Math.round(performance.now() - startedAt)}ms lines=${nextLines.length}`,
         );
       } catch (e) {

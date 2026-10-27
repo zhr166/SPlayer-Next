@@ -4,7 +4,6 @@ import { useMediaStore } from "@/stores/media";
 import { useSettingsStore } from "@/stores/settings";
 import { usePlaybackTime } from "@/composables/usePlaybackTime";
 import {
-  applyLyricFontFaces,
   LYRIC_SCRIPT_FONT_FAMILY_JA,
   LYRIC_SCRIPT_FONT_FAMILY_ZH,
 } from "@/services/lyricFontFaces";
@@ -29,9 +28,6 @@ import IconLucideDownload from "~icons/lucide/download";
 const status = useStatusStore();
 const media = useMediaStore();
 const settings = useSettingsStore();
-
-// 按文字种类分配字体：西文 / 假名 / 谚文 / 汉字各用各的
-watchEffect(() => applyLyricFontFaces(settings.lyric));
 const fav = useFavorite();
 const { enqueue: enqueueDownload } = useDownload();
 const { t } = useI18n();
