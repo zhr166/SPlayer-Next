@@ -207,6 +207,8 @@ const syncAlignPosition = (): void => {
 const syncCurrentTime = (time: number, isSeek?: boolean): void => {
   playerRef.value?.setCurrentTime(time, isSeek);
   syncAlignPosition();
+  // 跳转后 0.6 可能重建行元素，内联字体会随之丢失，这里补挂一次
+  if (isSeek) processLyricLanguage();
 };
 
 // 处理多语言显隐及音译偏好的本地高效清洗
@@ -282,6 +284,40 @@ const handleLineClick = (e: Event) => {
 };
 
 // 为所有主歌词行设置 html lang 属性
+/**
+ * 取字体链的首个可用字体，返回带引号的家族名
+ * @param chain - 逗号分隔的字体链
+ * @returns 首个字体家族名，空链返回空串
+ */
+const firstFamily = (chain: string): string => {
+  const name = (chain ?? "")
+    .split(",")
+    .map((item) => item.trim().replace(/^["']|["']$/g, ""))
+    .filter(Boolean)[0];
+  return name ? `"${name}"` : "";
+};
+
+/**
+ * 按行语言组合行级字体栈
+ *
+ * 西文字体放最前，字母命中它；假名/谚文/汉字在它里面没有字形，会回退到后面的语种字体，
+ * 因此同一行内中英混排也能各用各的。这等价于旧版"整行按语言取字体"，额外获得了英文用西文字体。
+ * @param language - 该行语言标记
+ * @returns 可直接写入 fontFamily 的字体栈；无语种字体时退回西文字体
+ */
+const lineFontStack = (language?: string): string => {
+  const tag = (language ?? "").toLowerCase();
+  const lyric = settings.lyric;
+  const scriptFamily = tag.startsWith("ja")
+    ? lyric.fontFamilyJapanese
+    : tag.startsWith("ko")
+      ? lyric.fontFamilyKorean
+      : tag.startsWith("zh") || tag === "yue"
+        ? lyric.fontFamilyChinese
+        : "";
+  return [firstFamily(lyric.fontFamilyLatin), firstFamily(scriptFamily)].filter(Boolean).join(", ");
+};
+
 const processLyricLanguage = (player = playerRef.value) => {
   const lyricGroups = player?.currentLyricGroups;
   if (!Array.isArray(lyricGroups) || lyricGroups.length === 0) return;
@@ -304,6 +340,15 @@ const processLyricLanguage = (player = playerRef.value) => {
         } else {
           lyricLineElement.removeAttribute("lang");
           lyricMainLineElement.removeAttribute("lang");
+        }
+        // 0.6 的行元素类名是哈希值，靠 lang + 选择器不可靠，直接写内联字体栈
+        const stack = lineFontStack(language);
+        if (stack) {
+          lyricLineElement.style.fontFamily = stack;
+          lyricMainLineElement.style.fontFamily = stack;
+        } else {
+          lyricLineElement.style.removeProperty("font-family");
+          lyricMainLineElement.style.removeProperty("font-family");
         }
       }
     }
