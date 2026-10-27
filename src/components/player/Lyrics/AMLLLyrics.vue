@@ -409,6 +409,33 @@ onMounted(async () => {
   void player.calcLayout();
   player.update(0);
 
+  // 首次挂载后抽屉动画结束时再下发一次歌词：重开能恢复正常，说明重新下发即可修复首次空白
+  window.setTimeout(() => {
+    const current = playerRef.value;
+    const lines = processedLyrics.value;
+    if (!current || lines.length === 0) return;
+    current.setLyricLines(lines, getCurrentTime() + status.lyricOffsetMs);
+    void current.calcLayout();
+    current.update(0);
+    current.resume();
+    void window.api.lyrics.log("info", "[perf] amll reapply after mount");
+  }, 600);
+
+  // 诊断：记录容器尺寸与首行位置，用于定位首次打开空白
+  void window.api.lyrics.log(
+    "info",
+    `[perf] amll layout h=${wrapperRef.value?.clientHeight ?? -1} w=${wrapperRef.value?.clientWidth ?? -1} initial=${Math.round(props.initialTime)}`,
+  );
+  window.setTimeout(() => {
+    const host = wrapperRef.value;
+    if (!host) return;
+    const line = host.querySelector<HTMLElement>('[class*="lyricLine"]');
+    void window.api.lyrics.log(
+      "info",
+      `[perf] amll check h=${host.clientHeight} line=${line ? `transform=${line.style.transform || "-"} opacity=${line.style.opacity || "-"}` : "none"}`,
+    );
+  }, 800);
+
   // 尺寸变化（窗口缩放、布局切换）同样需要重排
   resizeObserver = new ResizeObserver(() => {
     const current = playerRef.value;
