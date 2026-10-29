@@ -33,6 +33,25 @@ export const isConfirmedChineseText = (text: string): boolean =>
   (CHINESE_GLYPH_EVIDENCE_RE.test(text) || CHINESE_WORD_EVIDENCE_RE.test(text));
 
 /**
+ * 按文本自身的字符构成判断语言
+ *
+ * 翻译行与音译行不能沿用主行的语言，否则日文歌的中文翻译会被渲染成日文字形。
+ * 纯汉字视为中文（翻译惯例），纯拉丁视为 und-Latn（音译）。
+ *
+ * @param text - 待判断的文本
+ * @returns 语言标记；无法判断时返回 undefined
+ */
+export const detectTextLanguage = (text: string): string | undefined => {
+  if (!text.trim()) return undefined;
+  if (KANA_RE.test(text)) return "ja";
+  if (HANGUL_RE.test(text)) return "ko";
+  if (isConfirmedChineseText(text)) return "zh-CN";
+  if (HAN_RE.test(text)) return "zh-CN";
+  if (LATIN_RE.test(text)) return "und-Latn";
+  return undefined;
+};
+
+/**
  * 为歌词行补充语言信息
  *
  * 已由解析器标注的语言始终优先。未标注行中，含假名或谚文的整首歌词会把纯汉字行

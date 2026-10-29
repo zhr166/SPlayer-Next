@@ -5,6 +5,7 @@ import {
   LYRIC_SCRIPT_FONT_FAMILY_ZH,
 } from "@/services/lyricFontFaces";
 import type { LyricLine } from "@shared/types/lyrics";
+import { detectTextLanguage } from "@/utils/lyric/language";
 import type { LargerLyricText, LyricFloatAnimationIntensity } from "@/types/settings";
 import { SPlayerLyricPlayer as CoreLyricPlayer } from "./amll-player";
 import { useSettingsStore } from "@/stores/settings";
@@ -354,7 +355,7 @@ const processLyricLanguage = (player = playerRef.value) => {
   if (!Array.isArray(lyricGroups) || lyricGroups.length === 0) return;
 
   for (const group of lyricGroups) {
-    for (const line of [group.mainLine, group.bgLine]) {
+    for (const [lineIndex, line] of [group.mainLine, group.bgLine].entries()) {
       const lyricLine = line?.getLine();
       const lyricLineElement = line?.getElement();
       if (!lyricLine || !lyricLineElement) continue;
@@ -363,7 +364,12 @@ const processLyricLanguage = (player = playerRef.value) => {
 
       const lyricMainLineElement = lyricLineElement.firstChild;
       if (lyricMainLineElement instanceof HTMLElement) {
-        const language = (lyricLine as LyricLine).language;
+        // 副行（翻译/音译）按自身文本判断语言，避免沿用主行语言导致中文翻译用日文字体
+        const lineText = (lyricLine as LyricLine).words.map((word) => word.word).join("");
+        const language =
+          lineIndex === 1
+            ? (detectTextLanguage(lineText) ?? (lyricLine as LyricLine).language)
+            : (lyricLine as LyricLine).language;
         // 行根元素也带 lang，副行（音译/翻译）才会命中对应语种字体
         if (language) {
           lyricLineElement.lang = language;
