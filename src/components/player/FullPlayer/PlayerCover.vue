@@ -107,9 +107,7 @@ const fetchDynamicCover = async (): Promise<void> => {
     destroyHls();
     return;
   }
-  // 网易云需要登录态，其他来源借用 Apple Music 动效封面，不依赖登录
-  const needsLogin = track.source === "netease" && !user.isLoggedIn;
-  if (!isCoverMode.value || needsLogin || !settings.player.dynamicCover || trackLoading.value) {
+  if (!isCoverMode.value || !settings.player.dynamicCover || trackLoading.value) {
     dynamicCover.value = null;
     destroyHls();
     return;
@@ -119,7 +117,11 @@ const fetchDynamicCover = async (): Promise<void> => {
   dynamicCoverStop();
   dynamicCoverLoaded.value = false;
 
-  const result = await resolveDynamicCover(track, settings.player.appleMusicStorefront);
+  const result = await resolveDynamicCover(
+    track,
+    settings.player.appleMusicStorefront,
+    user.isLoggedIn,
+  );
   if (displayTrack.value?.id !== track.id) return; // 歌曲已切换
   dynamicCover.value = result;
   await attachVideoSource(result);

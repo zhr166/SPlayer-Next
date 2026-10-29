@@ -758,7 +758,7 @@ defineExpose({
     ref="wrapperRef"
     class="amll-lyrics-container"
     :class="contentVisible ? 'is-visible' : ''"
-    :style="{ fontFamily: lyricFontStack }"
+    :style="{ fontFamily: lyricFontStack, fontSynthesis: 'none' }"
   />
   <Teleport v-if="bottomLineEl" :to="bottomLineEl">
     <slot name="bottom" />

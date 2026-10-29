@@ -2,6 +2,7 @@
 import { useStatusStore } from "@/stores/status";
 import { useMediaStore } from "@/stores/media";
 import { useSettingsStore } from "@/stores/settings";
+import { normalizeLyricFontWeight } from "@/utils/lyric/fontWeight";
 import { usePlaybackTime } from "@/composables/usePlaybackTime";
 import {
   LYRIC_SCRIPT_FONT_FAMILY_JA,
@@ -299,6 +300,24 @@ const lyricFontStacks = computed(() => {
   };
 });
 
+/**
+ * 歌词容器样式
+ *
+ * 字重收敛到本机字体真实档位（苹方最高 Semibold），并禁用合成粗体，
+ * 否则 700 以上的请求会让中文出现假粗体，与西文/假名粗细不一致
+ */
+const lyricAreaStyle = computed(() => ({
+  fontSize: lyricFontSize.value,
+  fontWeight: String(normalizeLyricFontWeight(settings.lyric.fontWeight)),
+  fontSynthesis: "none" as const,
+  fontFamily: settings.lyric.fontFamily || undefined,
+  "--lyric-font-zh": lyricFontStacks.value.zh,
+  "--lyric-font-ja": lyricFontStacks.value.ja,
+  "--lyric-font-ko": lyricFontStacks.value.ko,
+  "--lyric-font-latin": lyricFontStacks.value.latin,
+  mixBlendMode: settings.lyric.lyricBlendMode,
+}));
+
 const lyricFontSize = computed(() =>
   settings.lyric.adaptiveFontSize
     ? `calc(${settings.lyric.fontSize} / 1080 * 100vh)`
@@ -484,19 +503,7 @@ const showComments = (): void => {
               <PlayerData align="left" simple />
             </div>
             <!-- 歌词容器 -->
-            <div
-              class="lyric-area relative flex-1 min-h-0"
-              :style="{
-                fontSize: lyricFontSize,
-                fontWeight: String(settings.lyric.fontWeight),
-                fontFamily: settings.lyric.fontFamily || undefined,
-                '--lyric-font-zh': lyricFontStacks.zh,
-                '--lyric-font-ja': lyricFontStacks.ja,
-                '--lyric-font-ko': lyricFontStacks.ko,
-                '--lyric-font-latin': lyricFontStacks.latin,
-                mixBlendMode: settings.lyric.lyricBlendMode,
-              }"
-            >
+            <div class="lyric-area relative flex-1 min-h-0" :style="lyricAreaStyle">
               <AMLLLyrics
                 v-if="lyricMounted && hasLyric && settings.lyric.engine === 'amll'"
                 ref="lyricRef"
