@@ -11,8 +11,33 @@ import { getDeveloperToken } from "./appleMusicLyrics";
 const AMP_API = "https://amp-api.music.apple.com/v1";
 const TIMEOUT_MS = 15_000;
 const CACHE_LIMIT = 100;
-/** 地区回退顺序：AM 各区曲库差异较大，中文曲常只在 cn 有动效封面 */
-const FALLBACK_STOREFRONTS = ["us", "jp", "cn"];
+/** 假名：日文曲目的判定依据 */
+const KANA_RE = /[\p{Script=Hiragana}\p{Script=Katakana}\u30FC\uFF66-\uFF9F]/u;
+/** 谚文：韩文曲目的判定依据 */
+const HANGUL_RE = /[\p{Script=Hangul}]/u;
+/** 汉字：中文曲目的判定依据 */
+const HAN_RE = /\p{Script=Han}/u;
+
+/** 日文曲目优先日本区，其次韩国区（两地日文曲库与动效封面覆盖更全） */
+const KANA_STOREFRONTS = ["jp", "kr", "tw", "hk", "us"];
+/** 中文曲目优先港台区，中文发行在港台区收录更全 */
+const HAN_STOREFRONTS = ["tw", "hk", "cn", "sg", "us", "jp"];
+/** 西文曲目优先美加区：日区会把英文曲名本土化成片假名，反而不易命中 */
+const LATIN_STOREFRONTS = ["us", "ca", "jp", "tw", "hk"];
+
+/**
+ * 按曲目文字种类决定地区回退顺序
+ * @param title - 曲目名
+ * @param artist - 歌手名
+ * @returns 地区回退顺序
+ */
+const resolveStorefrontOrder = (title: string, artist: string): string[] => {
+  const text = `${title}${artist}`;
+  if (KANA_RE.test(text)) return KANA_STOREFRONTS;
+  if (HANGUL_RE.test(text)) return KANA_STOREFRONTS;
+  if (HAN_RE.test(text)) return HAN_STOREFRONTS;
+  return LATIN_STOREFRONTS;
+};
 
 const cache = new Map<string, AppleMusicMotionResult | null>();
 
@@ -136,9 +161,10 @@ export const getAppleMusicMotionCover = async (
 
   try {
     const token = await getDeveloperToken();
-    const storefronts = [params.storefront, ...FALLBACK_STOREFRONTS].filter(
-      (value, index, list) => Boolean(value) && list.indexOf(value) === index,
-    );
+    const storefronts = [
+      params.storefront,
+      ...resolveStorefrontOrder(params.title, params.artist),
+    ].filter((value, index, list) => Boolean(value) && list.indexOf(value) === index);
     for (const storefront of storefronts) {
       const url = await lookupInStorefront(storefront, params, token);
       if (url) {
