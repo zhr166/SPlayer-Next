@@ -97,24 +97,35 @@ const readMotionUrl = (album: any): string | null => {
   return video?.motionDetailSquare?.video ?? video?.motionSquareVideo1x1?.video ?? null;
 };
 
+/** 归一化文本：去掉空格、标点与括号内容，便于比较曲名 */
+const normalize = (text: string): string =>
+  (text ?? "")
+    .toLowerCase()
+    .replace(/[(（\[【].*?[)）\]】]/g, "")
+    .replace(
+      /[^\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}a-z0-9]/gu,
+      "",
+    );
+
 /**
- * 在候选专辑里挑选与曲目专辑名最接近的一个
- * @param albums - 带动效封面的候选专辑
- * @param albumName - 曲目所属专辑名
- * @returns 命中的专辑，缺失时返回第一个候选
+ * 判断候选歌曲是否就是当前曲目
+ *
+ * 搜索会把翻唱、remix、同名不同曲排在前面，必须按曲名与歌手双重校验，
+ * 否则会取到别的专辑的动效封面（表现为封面完全对不上）
+ *
+ * @param song - Apple Music 歌曲资源
+ * @param params - 曲目元信息
+ * @returns 是否为同一首歌
  */
-const pickAlbum = (albums: any[], albumName?: string): any => {
-  const target = (albumName ?? "").trim().toLowerCase();
-  if (!target) return albums[0];
-  const exact = albums.find(
-    (album) => (album?.attributes?.name ?? "").trim().toLowerCase() === target,
-  );
-  if (exact) return exact;
-  const partial = albums.find((album) => {
-    const name = (album?.attributes?.name ?? "").toLowerCase();
-    return name.includes(target) || target.includes(name);
-  });
-  return partial ?? albums[0];
+const isSameSong = (song: any, params: AppleMusicMotionParams): boolean => {
+  const name = normalize(song?.attributes?.name ?? "");
+  const title = normalize(params.title);
+  if (!name || !title) return false;
+  if (name !== title && !name.includes(title) && !title.includes(name)) return false;
+  const artist = normalize(song?.attributes?.artistName ?? "");
+  const target = normalize(params.artist);
+  if (!target) return true;
+  return artist.includes(target) || target.includes(artist);
 };
 
 /**
@@ -144,8 +155,8 @@ const searchTerms = (term: string, storefront: string): string[] => {
 /**
  * 在指定地区查询曲目所属专辑的动效封面
  *
- * 搜索接口不返回 relationships，因此已知歌曲 ID 时直接查歌曲的专辑关系，
- * 其他情况按专辑类型搜索，再按专辑名在候选里挑选。
+ * 先按歌名找到同一首歌，再用该歌曲的专辑关系取动效封面；
+ * 找不到匹配歌曲时返回 null，宁可没有动态封面也不使用错误专辑的封面
  *
  * @param storefront - 商店地区
  * @param params - 曲目元信息
@@ -170,13 +181,18 @@ const lookupInStorefront = async (
   if (!term) return null;
   for (const searchTerm of searchTerms(term, storefront)) {
     const search = await requestAmp(
-      `/catalog/${storefront}/search?term=${encodeURIComponent(searchTerm)}&types=albums&limit=10&extend=editorialVideo`,
+      `/catalog/${storefront}/search?term=${encodeURIComponent(searchTerm)}&types=songs&limit=10`,
       token,
     );
-    const albums: any[] = (search?.results?.albums?.data ?? []).filter((album) =>
-      readMotionUrl(album),
+    const songs: any[] = search?.results?.songs?.data ?? [];
+    const matched = songs.find((song) => isSameSong(song, params));
+    if (!matched) continue;
+    const detail = await requestAmp(
+      `/catalog/${storefront}/songs/${matched.id}?include=albums&extend=editorialVideo`,
+      token,
     );
-    if (albums.length > 0) return readMotionUrl(pickAlbum(albums, params.album));
+    const url = readMotionUrl(detail?.data?.[0]?.relationships?.albums?.data?.[0]);
+    if (url) return url;
   }
   return null;
 };
