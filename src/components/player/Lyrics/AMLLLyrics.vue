@@ -150,6 +150,12 @@ const lyricFontStack = computed(() => {
 
 /** 容器尺寸监听，尺寸变化后需要重排歌词 */
 let resizeObserver: ResizeObserver | undefined;
+/** 时间线采样定时器 */
+let tickTimer: number | undefined;
+/** 最近一次外部时间推送时刻，用于判断核心时钟是否停住 */
+let lastSyncAt = 0;
+/** 自检计数，每 8 次（2 秒）打一条日志 */
+let tickCount = 0;
 // Core 实例必须保留原始身份：挂载时用它判定异步等待后实例是否已被卸载或替换。
 const playerRef = shallowRef<CoreLyricPlayer>();
 const bottomLineEl = ref<HTMLElement>();
@@ -206,6 +212,7 @@ const syncAlignPosition = (): void => {
 
 /** 同步时间后更新重叠段布局，确保新对齐点立即生效。 */
 const syncCurrentTime = (time: number, isSeek?: boolean): void => {
+  lastSyncAt = performance.now();
   playerRef.value?.setCurrentTime(time, isSeek);
   syncAlignPosition();
   // 跳转后 0.6 可能重建行元素，内联字体会随之丢失，这里补挂一次
@@ -557,20 +564,48 @@ onMounted(async () => {
   }, 700);
 
   // 尺寸变化（窗口缩放、布局切换）同样需要重排
+  let lastWidth = wrapperRef.value?.clientWidth ?? 0;
+  let lastHeight = wrapperRef.value?.clientHeight ?? 0;
   resizeObserver = new ResizeObserver(() => {
     const current = playerRef.value;
-    if (!current) return;
+    const host = wrapperRef.value;
+    if (!current || !host) return;
+    // 尺寸没变就不要重排：重排会把滚动位置直接吸附过去，表现为歌词一跳一跳
+    const width = host.clientWidth;
+    const height = host.clientHeight;
+    if (width === lastWidth && height === lastHeight) return;
+    lastWidth = width;
+    lastHeight = height;
+    void window.api.lyrics.log("info", `[perf] amll resize h=${height} w=${width}`);
     current.onResize();
     current.calcLayout(LayoutReason.Resize);
     current.update(0);
   });
   if (wrapperRef.value) resizeObserver.observe(wrapperRef.value);
+
+  // 观察时间线是否随播放推进：hot 长期为 0 说明核心时钟没有前进
+  // 250ms 自检：外部时间推送一旦停住就自己补，避免核心时钟冻结导致歌词不滚动
+  tickTimer = window.setInterval(() => {
+    const current = playerRef.value;
+    if (!current) return;
+    if (props.playing && !isFrozen.value && performance.now() - lastSyncAt > 400) {
+      syncCurrentTime(getCurrentTime() + status.lyricOffsetMs);
+    }
+    if (++tickCount % 8 !== 0) return;
+    const summary = current.getTimelineSummary();
+    void window.api.lyrics.log(
+      "info",
+      `[perf] amll tick now=${Math.round(getCurrentTime())} scrollTo=${summary.scrollToIndex} hot=${summary.highlighted}`,
+    );
+  }, 250);
 });
 
 onUnmounted(() => {
   document.removeEventListener("visibilitychange", handleVisibility);
   resizeObserver?.disconnect();
   resizeObserver = undefined;
+  if (tickTimer !== undefined) window.clearInterval(tickTimer);
+  tickTimer = undefined;
   pauseRaf();
   initialized.value = false;
   contentVisible.value = false;

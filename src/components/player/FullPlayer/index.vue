@@ -157,6 +157,8 @@ watch(
     if (!expanded) return;
     initialLyricTimeMs.value = getCurrentTime() + status.lyricOffsetMs;
     lyricMounted.value = true;
+    // 展开即开始推送播放时间：onAfterEnter 在已是展开态或过渡被打断时不会触发
+    nextTick(() => startTick());
   },
   { flush: "sync", immediate: true },
 );
