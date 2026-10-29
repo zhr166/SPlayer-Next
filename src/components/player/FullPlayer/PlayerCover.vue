@@ -67,6 +67,15 @@ const attachVideoSource = async (result: DynamicCoverResult | null): Promise<voi
   if (Hls.isSupported()) {
     destroyHls();
     hls = new Hls({ enableWorker: true, lowLatencyMode: false });
+    hls.on(Hls.Events.ERROR, (_event, data) => {
+      void window.api.lyrics.log(
+        "warn",
+        `[am-cover] hls error ${data.type}/${data.details} fatal=${data.fatal}`,
+      );
+    });
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      void window.api.lyrics.log("info", "[am-cover] hls manifest parsed");
+    });
     hls.loadSource(result.url);
     hls.attachMedia(video);
     return;
@@ -127,12 +136,17 @@ const fetchDynamicCover = async (): Promise<void> => {
 
   // 专辑名相同不代表封面相同：动效封面来自别的发行时，静态封面会来回跳，直接不用
   // 专辑名精确命中时封面本就属于同一发行，指纹仅作参考，避免图源差异导致误杀
+  let same: boolean | null = null;
   if (result?.artwork && !result.exact) {
     const trackCover =
       hdCache.value?.id === track.id ? hdCache.value.data : (track.cover ?? track.coverOriginal);
-    const same = trackCover ? await isSameCoverArt(trackCover, result.artwork) : null;
+    same = trackCover ? await isSameCoverArt(trackCover, result.artwork) : null;
     if (same === false) result = null;
   }
+  void window.api.lyrics.log(
+    "info",
+    `[am-cover] ${track.title} decided=${result ? result.format : "none"} exact=${result?.exact ?? "-"} coverSame=${same === null ? "unknown" : same}`,
+  );
   if (displayTrack.value?.id !== track.id) return;
 
   dynamicCover.value = result;
@@ -140,6 +154,19 @@ const fetchDynamicCover = async (): Promise<void> => {
 };
 
 /** 视频播完后进入等待再放送 */
+const onCoverFrame = (): void => {
+  dynamicCoverLoaded.value = true;
+  void window.api.lyrics.log("info", "[am-cover] first frame ready");
+};
+
+const onCoverError = (): void => {
+  const video = videoRef.value;
+  void window.api.lyrics.log(
+    "warn",
+    `[am-cover] video error code=${video?.error?.code ?? "-"} msg=${video?.error?.message ?? "-"}`,
+  );
+};
+
 const onDynamicCoverEnded = (): void => {
   dynamicCoverLoaded.value = false;
   dynamicCoverStart();
@@ -205,7 +232,8 @@ onBeforeUnmount(() => {
         muted
         autoplay
         playsinline
-        @loadeddata="dynamicCoverLoaded = true"
+        @loadeddata="onCoverFrame"
+        @error="onCoverError"
         @ended="onDynamicCoverEnded"
       />
     </Transition>
