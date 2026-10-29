@@ -43,6 +43,22 @@ const normalize = (text: string): string =>
       "",
     );
 
+/** 版本标记词：remix / live / cover 等，归一化会去掉括号，需要单独比较 */
+const VARIANT_RE =
+  /(remix|live|cover|instrumental|karaoke|acoustic|version|edit|mix|sped ?up|nightcore|tribute|piano)/i;
+
+/**
+ * 提取曲名里的版本标记
+ * @param text - 曲名原文
+ * @returns 标记词集合（小写）
+ */
+const variantsOf = (text: string): Set<string> =>
+  new Set(
+    (text.toLowerCase().match(new RegExp(VARIANT_RE.source, "gi")) ?? []).map((one) =>
+      one.toLowerCase(),
+    ),
+  );
+
 /**
  * 按曲名与歌手在网易云找同一首歌
  *
@@ -64,10 +80,15 @@ const findNeteaseSongId = async (track: Track): Promise<string | null> => {
     const targetArtist = normalize(artist ?? "");
     const matched = result.items.find((item) => {
       const name = normalize(item.title);
-      if (!name || (name !== title && !name.includes(title) && !title.includes(name))) return false;
+      if (!name || name !== title) return false;
+      // 版本标记必须一致，否则会拿到 remix / live 等其他封面的动态封面
+      const itemVariants = variantsOf(item.title);
+      for (const variant of variantsOf(track.title)) {
+        if (!itemVariants.has(variant)) return false;
+      }
       const names = normalize(item.artists?.map((one) => one.name).join(" "));
       if (!targetArtist) return true;
-      return names.includes(targetArtist) || targetArtist.includes(names);
+      return names === targetArtist || names.includes(targetArtist) || targetArtist.includes(names);
     });
     return matched?.id ?? null;
   } catch {

@@ -327,22 +327,28 @@ const SCRIPT_ALIASES: Record<string, string[]> = {
  * @returns 可直接写入 fontFamily 的字体栈
  */
 const HAN_TEXT_RE = /\p{Script=Han}/u;
+const KANA_TEXT_RE = /[\p{Script=Hiragana}\p{Script=Katakana}]/u;
+const HANGUL_TEXT_RE = /\p{Script=Hangul}/u;
 
 const lineFontStack = (language: string | undefined, text: string): string => {
   const tag = (language ?? "").toLowerCase();
   const lyric = settings.lyric;
-  // und-Hani 表示"含汉字但无法确认中日"，字体上按中文处理，否则会回退到系统默认中文字体，
-  // 与苹方行出现明显的字形与粗细差异
-  const scriptKey = tag.startsWith("ja")
-    ? "ja"
-    : tag.startsWith("ko")
-      ? "ko"
-      : tag.startsWith("zh") ||
-          tag === "yue" ||
-          tag === "und-hani" ||
-          (!tag && HAN_TEXT_RE.test(text))
-        ? "zh"
-        : "";
+  // 字体只按文本判定：含假名/谚文用对应语种，其余含汉字的行一律中文栈
+  // （语言判定为 und-Hani / und-Latn 的行同样含汉字，不能落到系统默认中文字体）
+  const scriptKey =
+    HAN_TEXT_RE.test(text) || tag === "und-hani"
+      ? KANA_TEXT_RE.test(text)
+        ? "ja"
+        : HANGUL_TEXT_RE.test(text)
+          ? "ko"
+          : "zh"
+      : tag.startsWith("ja")
+        ? "ja"
+        : tag.startsWith("ko")
+          ? "ko"
+          : tag.startsWith("zh") || tag === "yue"
+            ? "zh"
+            : "";
   const latin = parseChain(lyric.fontFamilyLatin)[0] ?? "";
   const scriptChain = scriptKey
     ? parseChain(

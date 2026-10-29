@@ -117,15 +117,37 @@ const normalize = (text: string): string =>
  * @param params - 曲目元信息
  * @returns 是否为同一首歌
  */
+/** 版本标记词：remix / live / cover 等，归一化会把括号去掉，必须单独比较 */
+const VARIANT_RE =
+  /(remix|live|cover|instrumental|karaoke|acoustic|version|edit|mix|sped ?up|nightcore|tribute|piano)/i;
+
+/**
+ * 提取文本里的版本标记
+ * @param text - 曲名原文
+ * @returns 标记词集合（小写）
+ */
+const variantsOf = (text: string): Set<string> =>
+  new Set(
+    (text.toLowerCase().match(new RegExp(VARIANT_RE.source, "gi")) ?? []).map((one) =>
+      one.toLowerCase(),
+    ),
+  );
+
 const isSameSong = (song: any, params: AppleMusicMotionParams): boolean => {
-  const name = normalize(song?.attributes?.name ?? "");
+  const rawName = song?.attributes?.name ?? "";
+  const name = normalize(rawName);
   const title = normalize(params.title);
   if (!name || !title) return false;
-  if (name !== title && !name.includes(title) && !title.includes(name)) return false;
+  if (name !== title) return false;
+  // 曲名相同但版本不同（remix/live/cover）时封面通常不同，必须排除
+  const songVariants = variantsOf(rawName);
+  for (const variant of variantsOf(params.title)) {
+    if (!songVariants.has(variant)) return false;
+  }
   const artist = normalize(song?.attributes?.artistName ?? "");
   const target = normalize(params.artist);
   if (!target) return true;
-  return artist.includes(target) || target.includes(artist);
+  return artist === target || artist.includes(target) || target.includes(artist);
 };
 
 /**
