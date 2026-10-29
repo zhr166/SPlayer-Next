@@ -118,6 +118,9 @@ const normalize = (text: string): string =>
  * @returns 是否为同一首歌
  */
 /** 版本标记词：remix / live / cover 等，归一化会把括号去掉，必须单独比较 */
+/** 专辑版本后缀：Encore / Deluxe 等属于不同发行，封面不同 */
+const EDITION_RE =
+  /(encore|deluxe|bonus|edition|remaster|expanded|anniversary|special|complete|collector|explicit|clean)/i;
 const VARIANT_RE =
   /(remix|live|cover|instrumental|karaoke|acoustic|version|edit|mix|sped ?up|nightcore|tribute|piano)/i;
 
@@ -132,6 +135,39 @@ const variantsOf = (text: string): Set<string> =>
       one.toLowerCase(),
     ),
   );
+
+/**
+ * 提取专辑版本标记
+ * @param text - 专辑名
+ * @returns 版本标记集合（小写）
+ */
+const editionsOf = (text: string): Set<string> =>
+  new Set(
+    (text.toLowerCase().match(new RegExp(EDITION_RE.source, "gi")) ?? []).map((one) =>
+      one.toLowerCase(),
+    ),
+  );
+
+/**
+ * 判断专辑是否为同一发行
+ *
+ * 名称包含关系不足以判断，`The Life of a Showgirl` 与 `... : The Encore` 属于不同发行，
+ * 封面不同，因此曲目侧的版本标记必须全部出现在候选侧
+ *
+ * @param trackAlbum - 曲目专辑名
+ * @param candidateAlbum - 候选专辑名
+ * @returns 是否可视为同一发行
+ */
+const isSameAlbum = (trackAlbum: string, candidateAlbum: string): boolean => {
+  const track = normalize(trackAlbum);
+  const candidate = normalize(candidateAlbum);
+  if (!track || !candidate) return true;
+  const candidateEditions = editionsOf(candidateAlbum);
+  for (const edition of editionsOf(trackAlbum)) {
+    if (!candidateEditions.has(edition)) return false;
+  }
+  return track === candidate || track.includes(candidate) || candidate.includes(track);
+};
 
 const isSameSong = (song: any, params: AppleMusicMotionParams): boolean => {
   const rawName = song?.attributes?.name ?? "";
@@ -149,14 +185,7 @@ const isSameSong = (song: any, params: AppleMusicMotionParams): boolean => {
   if (target && !(artist === target || artist.includes(target) || target.includes(artist)))
     return false;
   // 同一首歌在不同发行（单曲/专辑/Deluxe）里封面不同，专辑名不一致时不能借用动效封面
-  const album = normalize(song?.attributes?.albumName ?? "");
-  const targetAlbum = normalize(params.album ?? "");
-  if (
-    album &&
-    targetAlbum &&
-    !(album === targetAlbum || album.includes(targetAlbum) || targetAlbum.includes(album))
-  )
-    return false;
+  if (!isSameAlbum(params.album ?? "", song?.attributes?.albumName ?? "")) return false;
   return true;
 };
 

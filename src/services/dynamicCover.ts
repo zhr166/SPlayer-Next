@@ -44,6 +44,9 @@ const normalize = (text: string): string =>
     );
 
 /** 版本标记词：remix / live / cover 等，归一化会去掉括号，需要单独比较 */
+/** 专辑版本后缀：Encore / Deluxe 等属于不同发行，封面不同 */
+const EDITION_RE =
+  /(encore|deluxe|bonus|edition|remaster|expanded|anniversary|special|complete|collector|explicit|clean)/i;
 const VARIANT_RE =
   /(remix|live|cover|instrumental|karaoke|acoustic|version|edit|mix|sped ?up|nightcore|tribute|piano)/i;
 
@@ -58,6 +61,39 @@ const variantsOf = (text: string): Set<string> =>
       one.toLowerCase(),
     ),
   );
+
+/**
+ * 提取专辑版本标记
+ * @param text - 专辑名
+ * @returns 版本标记集合（小写）
+ */
+const editionsOf = (text: string): Set<string> =>
+  new Set(
+    (text.toLowerCase().match(new RegExp(EDITION_RE.source, "gi")) ?? []).map((one) =>
+      one.toLowerCase(),
+    ),
+  );
+
+/**
+ * 判断专辑是否为同一发行
+ *
+ * 名称包含关系不足以判断，`The Life of a Showgirl` 与 `... : The Encore` 属于不同发行，
+ * 封面不同，因此曲目侧的版本标记必须全部出现在候选侧
+ *
+ * @param trackAlbum - 曲目专辑名
+ * @param candidateAlbum - 候选专辑名
+ * @returns 是否可视为同一发行
+ */
+const isSameAlbum = (trackAlbum: string, candidateAlbum: string): boolean => {
+  const track = normalize(trackAlbum);
+  const candidate = normalize(candidateAlbum);
+  if (!track || !candidate) return true;
+  const candidateEditions = editionsOf(candidateAlbum);
+  for (const edition of editionsOf(trackAlbum)) {
+    if (!candidateEditions.has(edition)) return false;
+  }
+  return track === candidate || track.includes(candidate) || candidate.includes(track);
+};
 
 /**
  * 按曲名与歌手在网易云找同一首歌
@@ -92,18 +128,7 @@ const findNeteaseSongId = async (track: Track): Promise<string | null> => {
         !(names === targetArtist || names.includes(targetArtist) || targetArtist.includes(names))
       )
         return false;
-      const albumName = normalize(item.album?.name ?? "");
-      const targetAlbum = normalize(track.album?.name ?? "");
-      if (
-        albumName &&
-        targetAlbum &&
-        !(
-          albumName === targetAlbum ||
-          albumName.includes(targetAlbum) ||
-          targetAlbum.includes(albumName)
-        )
-      )
-        return false;
+      if (!isSameAlbum(track.album?.name ?? "", item.album?.name ?? "")) return false;
       return true;
     });
     return matched?.id ?? null;
