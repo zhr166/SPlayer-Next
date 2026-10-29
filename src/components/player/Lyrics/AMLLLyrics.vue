@@ -326,14 +326,21 @@ const SCRIPT_ALIASES: Record<string, string[]> = {
  * @param language - 该行语言标记
  * @returns 可直接写入 fontFamily 的字体栈
  */
-const lineFontStack = (language?: string): string => {
+const HAN_TEXT_RE = /\p{Script=Han}/u;
+
+const lineFontStack = (language: string | undefined, text: string): string => {
   const tag = (language ?? "").toLowerCase();
   const lyric = settings.lyric;
+  // und-Hani 表示"含汉字但无法确认中日"，字体上按中文处理，否则会回退到系统默认中文字体，
+  // 与苹方行出现明显的字形与粗细差异
   const scriptKey = tag.startsWith("ja")
     ? "ja"
     : tag.startsWith("ko")
       ? "ko"
-      : tag.startsWith("zh") || tag === "yue"
+      : tag.startsWith("zh") ||
+          tag === "yue" ||
+          tag === "und-hani" ||
+          (!tag && HAN_TEXT_RE.test(text))
         ? "zh"
         : "";
   const latin = parseChain(lyric.fontFamilyLatin)[0] ?? "";
@@ -386,7 +393,7 @@ const processLyricLanguage = (player = playerRef.value) => {
           lyricMainLineElement.removeAttribute("lang");
         }
         // 0.6 的行元素类名是哈希值，靠 lang + 选择器不可靠，直接写内联字体栈
-        const stack = lineFontStack(language);
+        const stack = lineFontStack(language, lineText);
         if (stack) {
           lyricLineElement.style.fontFamily = stack;
           lyricMainLineElement.style.fontFamily = stack;
