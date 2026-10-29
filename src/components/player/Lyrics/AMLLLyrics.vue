@@ -384,12 +384,17 @@ const processLyricLanguage = (player = playerRef.value) => {
 
       const lyricMainLineElement = lyricLineElement.firstChild;
       if (lyricMainLineElement instanceof HTMLElement) {
-        // 副行（翻译/音译）按自身文本判断语言，避免沿用主行语言导致中文翻译用日文字体
-        const lineText = (lyricLine as LyricLine).words.map((word) => word.word).join("");
+        const lyricLineInfo = lyricLine as LyricLine;
+        const lineText = lyricLineInfo.words.map((word) => word.word).join("");
+        // 副行：翻译是中文、音译是拉丁，直接按内容定性，避免沿用主行语言（日文歌的翻译会拿到日文字体）
         const language =
           lineIndex === 1
-            ? (detectTextLanguage(lineText) ?? (lyricLine as LyricLine).language)
-            : (lyricLine as LyricLine).language;
+            ? lyricLineInfo.translatedLyric
+              ? "zh-CN"
+              : lyricLineInfo.romanLyric
+                ? "und-Latn"
+                : (detectTextLanguage(lineText) ?? lyricLineInfo.language)
+            : lyricLineInfo.language;
         // 行根元素也带 lang，副行（音译/翻译）才会命中对应语种字体
         if (language) {
           lyricLineElement.lang = language;
