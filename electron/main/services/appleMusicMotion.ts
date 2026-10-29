@@ -6,6 +6,7 @@
  */
 import { coreLog } from "@main/utils/logger";
 import type { AppleMusicMotionParams, AppleMusicMotionResult } from "@shared/types/appleMusic";
+import { convertText } from "@main/services/opencc";
 import { getDeveloperToken } from "./appleMusicLyrics";
 
 const AMP_API = "https://amp-api.music.apple.com/v1";
@@ -17,11 +18,13 @@ const KANA_RE = /[\p{Script=Hiragana}\p{Script=Katakana}\u30FC\uFF66-\uFF9F]/u;
 const HANGUL_RE = /[\p{Script=Hangul}]/u;
 /** 汉字：中文曲目的判定依据 */
 const HAN_RE = /\p{Script=Han}/u;
+/** 日文新字体（中文不使用）：出现即可判定为日文汉字曲目 */
+const JA_SHINJITAI_RE = /[楽図広気売駅円芸転伝沢浜桜鉄県検険厳塩縁剤斎徳]/u;
 
 /** 日文曲目优先日本区，其次韩国区（两地日文曲库与动效封面覆盖更全） */
 const KANA_STOREFRONTS = ["jp", "kr", "tw", "hk", "us"];
 /** 中文曲目优先港台区，中文发行在港台区收录更全 */
-const HAN_STOREFRONTS = ["tw", "hk", "cn", "sg", "us", "jp"];
+const HAN_STOREFRONTS = ["cn", "tw", "hk", "sg", "us", "jp"];
 /** 西文曲目优先美加区：日区会把英文曲名本土化成片假名，反而不易命中 */
 const LATIN_STOREFRONTS = ["us", "ca", "jp", "tw", "hk"];
 
@@ -35,6 +38,8 @@ const resolveStorefrontOrder = (title: string, artist: string): string[] => {
   const text = `${title}${artist}`;
   if (KANA_RE.test(text)) return KANA_STOREFRONTS;
   if (HANGUL_RE.test(text)) return KANA_STOREFRONTS;
+  // 纯汉字标题也可能来自日文，命中日文新字体时优先日本区
+  if (JA_SHINJITAI_RE.test(text)) return KANA_STOREFRONTS;
   if (HAN_RE.test(text)) return HAN_STOREFRONTS;
   return LATIN_STOREFRONTS;
 };
@@ -111,6 +116,30 @@ const pickAlbum = (albums: any[], albumName?: string): any => {
 };
 
 /**
+ * 按地区生成候选检索词
+ *
+ * 港台区曲库多用繁体标题、大陆区为简体，直接用元数据原文常常匹配不到，
+ * 因此在原文未命中时补一次简繁转换后的检索
+ *
+ * @param term - 原始检索词
+ * @param storefront - 商店地区
+ * @returns 依次尝试的检索词
+ */
+const searchTerms = (term: string, storefront: string): string[] => {
+  const mode =
+    storefront === "tw"
+      ? "s2tw"
+      : storefront === "hk"
+        ? "s2hk"
+        : storefront === "cn" || storefront === "sg"
+          ? "t2s"
+          : null;
+  if (!mode) return [term];
+  const converted = convertText(term, mode);
+  return converted && converted !== term ? [term, converted] : [term];
+};
+
+/**
  * 在指定地区查询曲目所属专辑的动效封面
  *
  * 搜索接口不返回 relationships，因此已知歌曲 ID 时直接查歌曲的专辑关系，
@@ -137,15 +166,17 @@ const lookupInStorefront = async (
 
   const term = `${params.title} ${params.artist}`.trim();
   if (!term) return null;
-  const search = await requestAmp(
-    `/catalog/${storefront}/search?term=${encodeURIComponent(term)}&types=albums&limit=10&extend=editorialVideo`,
-    token,
-  );
-  const albums: any[] = (search?.results?.albums?.data ?? []).filter((album) =>
-    readMotionUrl(album),
-  );
-  if (albums.length === 0) return null;
-  return readMotionUrl(pickAlbum(albums, params.album));
+  for (const searchTerm of searchTerms(term, storefront)) {
+    const search = await requestAmp(
+      `/catalog/${storefront}/search?term=${encodeURIComponent(searchTerm)}&types=albums&limit=10&extend=editorialVideo`,
+      token,
+    );
+    const albums: any[] = (search?.results?.albums?.data ?? []).filter((album) =>
+      readMotionUrl(album),
+    );
+    if (albums.length > 0) return readMotionUrl(pickAlbum(albums, params.album));
+  }
+  return null;
 };
 
 /**
