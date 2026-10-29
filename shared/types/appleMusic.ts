@@ -73,6 +73,8 @@ export interface AppleMusicMotionParams {
 export interface AppleMusicMotionResult {
   /** 动态封面视频地址（HLS 播放列表） */
   url: string;
+  /** 候选专辑的静态封面地址，用于与曲目封面做指纹比对 */
+  artwork: string | null;
 }
 
 export interface AppleMusicApi {

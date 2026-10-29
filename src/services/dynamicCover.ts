@@ -13,6 +13,8 @@ export interface DynamicCoverResult {
   url: string;
   /** 视频格式：mp4 可直接播放，hls 需要 MSE */
   format: "mp4" | "hls";
+  /** 候选专辑的静态封面，用于判断是否与曲目封面同一张 */
+  artwork?: string | null;
 }
 
 const CACHE_LIMIT = 60;
@@ -205,7 +207,7 @@ export const resolveDynamicCover = async (
     songId: track.source === "appleMusic" ? track.id : undefined,
     storefront,
   });
-  return remember(key, motion ? { url: motion.url, format: "hls" } : null);
+  return remember(key, motion ? { url: motion.url, format: "hls", artwork: motion.artwork } : null);
 };
 
 /** 清空缓存（切换账号或强制刷新时使用） */

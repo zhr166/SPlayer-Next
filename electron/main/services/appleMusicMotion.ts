@@ -97,6 +97,17 @@ const readMotionUrl = (album: any): string | null => {
   return video?.motionDetailSquare?.video ?? video?.motionSquareVideo1x1?.video ?? null;
 };
 
+/**
+ * 读取专辑静态封面地址（300x300），用于与曲目封面做指纹比对
+ * @param album - 专辑资源
+ * @returns 封面地址，缺失时返回 null
+ */
+const readArtworkUrl = (album: any): string | null => {
+  const template = album?.attributes?.artwork?.url;
+  if (typeof template !== "string") return null;
+  return template.replace("{w}", "300").replace("{h}", "300");
+};
+
 /** 内容分级等元数据噪声：QQ/酷狗常把它拼进歌名或专辑名，比较前必须剥离 */
 const NOISE_RE = /\b(explicit|clean|explicit version|clean version)\b/gi;
 
@@ -253,17 +264,22 @@ const lookupInStorefront = async (
   storefront: string,
   params: AppleMusicMotionParams,
   token: string,
-): Promise<string | null> => {
-  const considerAlbum = async (album: any): Promise<{ url: string; score: number } | null> => {
+): Promise<{ url: string; artwork: string | null } | null> => {
+  const considerAlbum = async (
+    album: any,
+  ): Promise<{ url: string; score: number; artwork: string | null } | null> => {
     const url = readMotionUrl(album);
     if (!url) return null;
     const albumName = album?.attributes?.name ?? "";
-    if (isSameAlbum(params.album ?? "", albumName)) return { url, score: 1 };
-    return { url, score: albumSimilarity(params.album ?? "", albumName) };
+    const artwork = readArtworkUrl(album);
+    if (isSameAlbum(params.album ?? "", albumName)) return { url, score: 1, artwork };
+    return { url, score: albumSimilarity(params.album ?? "", albumName), artwork };
   };
 
-  let best: { url: string; score: number } | null = null;
-  const keepBest = (candidate: { url: string; score: number } | null): void => {
+  let best: { url: string; score: number; artwork: string | null } | null = null;
+  const keepBest = (
+    candidate: { url: string; score: number; artwork: string | null } | null,
+  ): void => {
     if (candidate && (!best || candidate.score > best.score)) best = candidate;
   };
 
@@ -297,7 +313,9 @@ const lookupInStorefront = async (
   }
 
   // 专辑名几乎一致（≥0.9）才允许借用；明显不同则放弃，避免串封面
-  return best && (best as { score: number }).score >= 0.9 ? (best as { url: string }).url : null;
+  const chosen = best as { url: string; score: number; artwork: string | null } | null;
+  if (!chosen || chosen.score < 0.9) return null;
+  return { url: chosen.url, artwork: chosen.artwork };
 };
 
 /**
@@ -318,10 +336,10 @@ export const getAppleMusicMotionCover = async (
       ...resolveStorefrontOrder(params.title, params.artist),
     ].filter((value, index, list) => Boolean(value) && list.indexOf(value) === index);
     for (const storefront of storefronts) {
-      const url = await lookupInStorefront(storefront, params, token);
-      if (url) {
-        coreLog.info(`[am-motion] hit ${storefront} ${params.title} → ${url.slice(0, 80)}`);
-        return remember(key, { url });
+      const motion = await lookupInStorefront(storefront, params, token);
+      if (motion) {
+        coreLog.info(`[am-motion] hit ${storefront} ${params.title} -> ${motion.url.slice(0, 80)}`);
+        return remember(key, motion);
       }
     }
     coreLog.info(`[am-motion] miss ${params.title} - ${params.artist}`);
