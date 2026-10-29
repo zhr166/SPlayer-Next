@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { LayoutAlignAnchor, LayoutReason } from "@applemusic-like-lyrics/core";
 import {
+  LYRIC_LATIN_LETTERS_FAMILY,
   LYRIC_SCRIPT_FONT_FAMILY_JA,
   LYRIC_SCRIPT_FONT_FAMILY_ZH,
 } from "@/services/lyricFontFaces";
 import type { LyricLine } from "@shared/types/lyrics";
 import { detectTextLanguage } from "@/utils/lyric/language";
+import { normalizeLyricFontWeight } from "@/utils/lyric/fontWeight";
 import type { LargerLyricText, LyricFloatAnimationIntensity } from "@/types/settings";
 import { SPlayerLyricPlayer as CoreLyricPlayer } from "./amll-player";
 import { useSettingsStore } from "@/stores/settings";
@@ -349,7 +351,8 @@ const lineFontStack = (language: string | undefined, text: string): string => {
           : tag.startsWith("zh") || tag === "yue"
             ? "zh"
             : "";
-  const latin = parseChain(lyric.fontFamilyLatin)[0] ?? "";
+  // 只有字母交给西文字体，数字与标点留给中文字体，避免混排时字重不一致
+  const latin = `"${LYRIC_LATIN_LETTERS_FAMILY}"`;
   const scriptChain = scriptKey
     ? parseChain(
         scriptKey === "ja"
@@ -411,6 +414,25 @@ const processLyricLanguage = (player = playerRef.value) => {
         } else {
           lyricLineElement.style.removeProperty("font-family");
           lyricMainLineElement.style.removeProperty("font-family");
+        }
+
+        // 字重与合成策略显式写在行元素上，避免不同字体各自推导出不同粗细
+        const weight = String(normalizeLyricFontWeight(settings.lyric.fontWeight));
+        lyricLineElement.style.fontWeight = weight;
+        lyricLineElement.style.fontSynthesis = "none";
+        lyricMainLineElement.style.fontWeight = weight;
+        lyricMainLineElement.style.fontSynthesis = "none";
+
+        // 翻译与音译是同一行元素下的兄弟节点，会继承主行字体；
+        // 按各自文本重新选栈，日文歌的中文翻译才能落到苹方
+        for (const child of Array.from(lyricLineElement.children)) {
+          if (child === lyricMainLineElement) continue;
+          if (!(child instanceof HTMLElement)) continue;
+          const childStack = lineFontStack(undefined, child.textContent ?? "");
+          if (childStack) child.style.fontFamily = childStack;
+          else child.style.removeProperty("font-family");
+          child.style.fontWeight = weight;
+          child.style.fontSynthesis = "none";
         }
       }
     }

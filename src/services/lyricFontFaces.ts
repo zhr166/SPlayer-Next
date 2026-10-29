@@ -9,6 +9,9 @@ import type { LyricSettings } from "@/types/settings";
 const STYLE_ID = "splayer-lyric-script-faces";
 
 /** 分文字种类字体族名；日语行单独一套，让汉字跟随日文字体 */
+/** 仅覆盖字母与西文标点的字体族：数字留給中文字体，避免中英混排时字重跳变 */
+export const LYRIC_LATIN_LETTERS_FAMILY = "SPlayerLyricLatin";
+
 export const LYRIC_SCRIPT_FONT_FAMILY_ZH = "SPlayerLyricScriptZh";
 /** 日语行的分文字种类字体族名，汉字走日文字体 */
 export const LYRIC_SCRIPT_FONT_FAMILY_JA = "SPlayerLyricScriptJa";
@@ -74,6 +77,10 @@ export const applyLyricFontFaces = (lyric: LyricSettings): void => {
 
   const rules: string[] = [];
   // 字体链里每个字体各生成一条规则，浏览器按顺序取第一个能解析的
+  /** 字母与西文标点（刻意排除 U+0030-0039 数字） */
+  const LATIN_LETTER_RANGES =
+    "U+0041-005A,U+0061-007A,U+00C0-00D6,U+00D8-00F6,U+00F8-00FF,U+0100-024F,U+0021-002F,U+003A-0040,U+005B-0060,U+007B-007E";
+
   const addRule = (family: string, fonts: string, ranges: string): void => {
     for (const name of parseFontChain(fonts)) {
       rules.push(
@@ -123,6 +130,14 @@ export const applyLyricFontFaces = (lyric: LyricSettings): void => {
   } else if (styleEl.textContent === css) {
     // 内容没变就不要再写，重写会让浏览器作废已解析的本机字体，导致每次进播放页都重新解析
     return;
+  }
+  for (const family of [
+    ...parseFontChain(lyric.fontFamilyLatin),
+    ...SCRIPT_FALLBACK_FAMILIES.latin,
+  ]) {
+    rules.push(
+      `@font-face{font-family:"${LYRIC_LATIN_LETTERS_FAMILY}";src:local("${escapeFontName(family)}");unicode-range:${LATIN_LETTER_RANGES};}`,
+    );
   }
   styleEl.textContent = css;
 };
