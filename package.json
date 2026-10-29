@@ -103,6 +103,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vue": "^10.11.1",
     "happy-dom": "^21.0.3",
+    "hls.js": "^1.7.3",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
     "localforage": "^1.10.0",

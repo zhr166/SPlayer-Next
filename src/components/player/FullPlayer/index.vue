@@ -158,7 +158,7 @@ watch(
     initialLyricTimeMs.value = getCurrentTime() + status.lyricOffsetMs;
     lyricMounted.value = true;
   },
-  { flush: "sync" },
+  { flush: "sync", immediate: true },
 );
 
 const onAfterEnter = () => {

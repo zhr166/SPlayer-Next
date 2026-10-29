@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { getDynamicCover } from "@/apis/song/netease";
+import Hls from "hls.js";
+import { resolveDynamicCover, type DynamicCoverResult } from "@/services/dynamicCover";
 import { useMediaStore } from "@/stores/media";
 import { useStatusStore } from "@/stores/status";
 import { useSettingsStore } from "@/stores/settings";
@@ -36,11 +37,41 @@ watchEffect(async () => {
   hdCache.value = { id, data: r.data };
 });
 
-/** 动态封面地址 */
-const dynamicCoverUrl = ref<string>("");
+/** 动态封面地址与格式 */
+const dynamicCover = ref<DynamicCoverResult | null>(null);
 /** 动态封面是否已加载出首帧 */
 const dynamicCoverLoaded = ref<boolean>(false);
 const videoRef = ref<HTMLVideoElement | null>(null);
+/** HLS 播放实例，非 mp4 动态封面需要它做 MSE 播放 */
+let hls: Hls | null = null;
+
+/** 释放 HLS 实例，避免离开播放页后继续拉流 */
+const destroyHls = (): void => {
+  hls?.destroy();
+  hls = null;
+};
+
+/**
+ * 按格式给视频元素挂载媒体源
+ * @param result - 动态封面解析结果
+ */
+const attachVideoSource = async (result: DynamicCoverResult | null): Promise<void> => {
+  await nextTick();
+  const video = videoRef.value;
+  if (!video || !result) return;
+  if (result.format === "mp4") {
+    video.src = result.url;
+    return;
+  }
+  if (Hls.isSupported()) {
+    destroyHls();
+    hls = new Hls({ enableWorker: true, lowLatencyMode: false });
+    hls.loadSource(result.url);
+    hls.attachMedia(video);
+    return;
+  }
+  video.src = result.url;
+};
 
 /** 是否处于封面展示模式（非全屏） */
 const isCoverMode = computed(() => settings.player.coverLayout !== "fullscreen");
@@ -53,7 +84,11 @@ const { start: dynamicCoverStart, stop: dynamicCoverStop } = useTimeoutFn(
   () => {
     dynamicCoverLoaded.value = true;
     nextTick(() => {
-      videoRef.value?.play();
+      const video = videoRef.value;
+      if (!video) return;
+      // HLS 播完后 currentTime 停在结尾，复位才能重播
+      if (video.currentTime > 0) video.currentTime = 0;
+      void video.play();
     });
   },
   2000,
@@ -68,17 +103,15 @@ const { start: dynamicCoverStart, stop: dynamicCoverStop } = useTimeoutFn(
 const fetchDynamicCover = async (): Promise<void> => {
   const track = displayTrack.value;
   if (!track) {
-    dynamicCoverUrl.value = "";
+    dynamicCover.value = null;
+    destroyHls();
     return;
   }
-  if (
-    track.source !== "netease" ||
-    !isCoverMode.value ||
-    !user.isLoggedIn ||
-    !settings.player.dynamicCover ||
-    trackLoading.value
-  ) {
-    dynamicCoverUrl.value = "";
+  // 网易云需要登录态，其他来源借用 Apple Music 动效封面，不依赖登录
+  const needsLogin = track.source === "netease" && !user.isLoggedIn;
+  if (!isCoverMode.value || needsLogin || !settings.player.dynamicCover || trackLoading.value) {
+    dynamicCover.value = null;
+    destroyHls();
     return;
   }
 
@@ -86,9 +119,10 @@ const fetchDynamicCover = async (): Promise<void> => {
   dynamicCoverStop();
   dynamicCoverLoaded.value = false;
 
-  const url = await getDynamicCover(track.id);
+  const result = await resolveDynamicCover(track, settings.player.appleMusicStorefront);
   if (displayTrack.value?.id !== track.id) return; // 歌曲已切换
-  dynamicCoverUrl.value = url ?? "";
+  dynamicCover.value = result;
+  await attachVideoSource(result);
 };
 
 /** 视频播完后进入等待再放送 */
@@ -99,12 +133,13 @@ const onDynamicCoverEnded = (): void => {
 
 /** 卸载或切歌时清理视频元素，避免继续解码 */
 const cleanupDynamicCover = (): void => {
+  destroyHls();
   if (videoRef.value) {
     videoRef.value.pause();
-    videoRef.value.src = "";
+    videoRef.value.removeAttribute("src");
     videoRef.value.load();
   }
-  dynamicCoverUrl.value = "";
+  dynamicCover.value = null;
   dynamicCoverLoaded.value = false;
 };
 
@@ -149,9 +184,9 @@ onBeforeUnmount(() => {
     <DetailCover :src="coverSrc" :fallback="displayTrack?.cover" class="size-full" />
     <Transition name="fade" mode="out-in">
       <video
-        v-if="dynamicCoverUrl && !fullscreen"
+        v-if="dynamicCover && !fullscreen"
         ref="videoRef"
-        :src="dynamicCoverUrl"
+        :src="dynamicCover.format === 'mp4' ? dynamicCover.url : undefined"
         :class="['dynamic-cover', { loaded: dynamicCoverLoaded }]"
         muted
         autoplay

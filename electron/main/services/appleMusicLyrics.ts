@@ -94,7 +94,7 @@ const fetchDeveloperToken = async (): Promise<TokenCacheEntry> => {
 };
 
 /** 获取可用的 Apple Music 开发者令牌，并合并并发刷新。 */
-const getDeveloperToken = async (force = false): Promise<string> => {
+export const getDeveloperToken = async (force = false): Promise<string> => {
   const now = Math.floor(Date.now() / 1000);
   if (!force && developerToken && developerToken.expiresAt > now + 300) return developerToken.token;
   if (!developerTokenTask) {
@@ -293,10 +293,7 @@ const applyReplacementTranslations = (ttml: string): string => {
   processedTtml = processedTtml.replace(/<translations>\s*<\/translations>/gi, "");
 
   // 5. 更新根节点 <tt> 的 xml:lang 声明为目标语言
-  return processedTtml.replace(
-    /(<tt\b[^>]*\bxml:lang=["'])[^"']+([^>]*>)/i,
-    `$1${targetLang}$2`,
-  );
+  return processedTtml.replace(/(<tt\b[^>]*\bxml:lang=["'])[^"']+([^>]*>)/i, `$1${targetLang}$2`);
 };
 
 /** 从 Apple Music 获取当前歌曲的 TTML 歌词；失败时返回 null。 */

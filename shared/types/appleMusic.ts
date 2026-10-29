@@ -55,6 +55,24 @@ export interface AppleMusicSearchResult {
 }
 
 /** 渲染层可用的 Apple Music API */
+/** Apple Music 动态封面查询入参 */
+export interface AppleMusicMotionParams {
+  /** 歌曲标题 */
+  title: string;
+  /** 歌手名 */
+  artist: string;
+  /** 已知的 Apple Music 曲目 ID（Apple Music 来源时可直接定位） */
+  songId?: string;
+  /** 商店地区（两位国家码） */
+  storefront: string;
+}
+
+/** Apple Music 动态封面结果 */
+export interface AppleMusicMotionResult {
+  /** 动态封面视频地址（HLS 播放列表） */
+  url: string;
+}
+
 export interface AppleMusicApi {
   /**
    * 按分类搜索 Apple Music 目录
@@ -62,4 +80,10 @@ export interface AppleMusicApi {
    * @returns 归一化后的搜索结果
    */
   search: (params: AppleMusicSearchParams) => Promise<AppleMusicSearchResult>;
+  /**
+   * 查询专辑动态封面（editorialVideo）
+   * @param params - 曲目元信息与商店地区
+   * @returns 命中返回 HLS 地址，未命中返回 null
+   */
+  motion: (params: AppleMusicMotionParams) => Promise<AppleMusicMotionResult | null>;
 }

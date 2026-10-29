@@ -1006,8 +1006,8 @@
       "description": "Fetch the next track's playback info in advance, which may increase network usage"
     },
     "dynamicCover": {
-      "label": "Dynamic Cover",
-      "description": "Show animated covers for supported songs (cover mode only)"
+      "label": "Animated cover",
+      "description": "Animated artwork while playing; NetEase uses in-app motion covers, other sources match Apple Music motion artwork by track metadata"
     },
     "outputDevice": {
       "label": "Output Device",
@@ -2247,9 +2247,18 @@
         "homepage": "Homepage"
       },
       "grant": {
-        "network": { "label": "Network", "desc": "Can make network requests" },
-        "control": { "label": "Control", "desc": "Can control the player" },
-        "ui": { "label": "Interface", "desc": "Can extend or modify the app interface" }
+        "network": {
+          "label": "Network",
+          "desc": "Can make network requests"
+        },
+        "control": {
+          "label": "Control",
+          "desc": "Can control the player"
+        },
+        "ui": {
+          "label": "Interface",
+          "desc": "Can extend or modify the app interface"
+        }
       }
     },
     "pluginManager": {

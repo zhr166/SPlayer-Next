@@ -476,6 +476,14 @@ onMounted(async () => {
   await nextFrame();
   if (playerRef.value !== player) return;
 
+  // 抽屉展开动画期间容器高度可能仍为 0，此时下发歌词会让核心按 0 高度排版并停在视口外
+  for (let attempt = 0; attempt < 60; attempt++) {
+    if ((wrapperRef.value?.clientHeight ?? 0) > 0) break;
+    await nextFrame();
+  }
+  if (playerRef.value !== player) return;
+  player.onResize();
+
   if (processedLyrics.value.length > 0) {
     const startedAt = performance.now();
     const prepared = processedLyrics.value;
@@ -530,7 +538,8 @@ onMounted(async () => {
       `[perf] amll probe h=${height} offset0=${Math.round(offset)} scrollTo=${summary.scrollToIndex} hot=${summary.highlighted}`,
     );
     if (!Number.isFinite(offset) || Math.abs(offset) > height) {
-      // 越界则按当前播放位置重算，避免整块歌词停在视口外
+      // 越界说明首次布局基于未稳定的容器尺寸：先让核心重新测量，再按当前进度重算
+      current.onResize();
       current.setCurrentTime(getCurrentTime() + status.lyricOffsetMs, true);
       current.calcLayout(LayoutReason.Seek);
       current.update(0);
@@ -545,7 +554,8 @@ onMounted(async () => {
   resizeObserver = new ResizeObserver(() => {
     const current = playerRef.value;
     if (!current) return;
-    current.calcLayout(LayoutReason.ConfigChange);
+    current.onResize();
+    current.calcLayout(LayoutReason.Resize);
     current.update(0);
   });
   if (wrapperRef.value) resizeObserver.observe(wrapperRef.value);
