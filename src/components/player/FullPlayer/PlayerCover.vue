@@ -136,8 +136,9 @@ const fetchDynamicCover = async (): Promise<void> => {
 
   // 专辑名相同不代表封面相同：动效封面来自别的发行时，静态封面会来回跳，直接不用
   // 专辑名精确命中时封面本就属于同一发行，指纹仅作参考，避免图源差异导致误杀
+  // 专辑名相同也可能是不同版本封面，因此始终比对指纹；取不到图时接受
   let same: boolean | null = null;
-  if (result?.artwork && !result.exact) {
+  if (result?.artwork) {
     const trackCover =
       hdCache.value?.id === track.id ? hdCache.value.data : (track.cover ?? track.coverOriginal);
     same = trackCover ? await isSameCoverArt(trackCover, result.artwork) : null;

@@ -423,16 +423,17 @@ const processLyricLanguage = (player = playerRef.value) => {
         lyricMainLineElement.style.fontWeight = weight;
         lyricMainLineElement.style.fontSynthesis = "none";
 
-        // 翻译与音译是同一行元素下的兄弟节点，会继承主行字体；
-        // 按各自文本重新选栈，日文歌的中文翻译才能落到苹方
-        for (const child of Array.from(lyricLineElement.children)) {
-          if (child === lyricMainLineElement) continue;
-          if (!(child instanceof HTMLElement)) continue;
-          const childStack = lineFontStack(undefined, child.textContent ?? "");
-          if (childStack) child.style.fontFamily = childStack;
-          else child.style.removeProperty("font-family");
-          child.style.fontWeight = weight;
-          child.style.fontSynthesis = "none";
+        // 翻译与音译可能嵌在主行元素内部，会继承主行字体；
+        // 遍历行内所有文本叶子节点，按各自内容重新选栈，日文歌的中文翻译才能落到苹方
+        for (const leaf of lyricLineElement.querySelectorAll<HTMLElement>("*")) {
+          if (leaf.children.length > 0 || leaf === lyricMainLineElement) continue;
+          const leafText = leaf.textContent ?? "";
+          if (!leafText.trim()) continue;
+          const leafStack = lineFontStack(undefined, leafText);
+          if (leafStack) leaf.style.fontFamily = leafStack;
+          else leaf.style.removeProperty("font-family");
+          leaf.style.fontWeight = weight;
+          leaf.style.fontSynthesis = "none";
         }
       }
     }

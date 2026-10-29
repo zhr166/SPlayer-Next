@@ -7,8 +7,8 @@
 
 /** 指纹边长，8x8 共 64 位 */
 const SAMPLE_SIZE = 8;
-/** 汉明距离阈值：低于该值视为同一张封面 */
-const SAME_COVER_THRESHOLD = 12;
+/** 汉明距离阈值：放宽到 18，容忍同一张图的裁剪与压缩差异 */
+const SAME_COVER_THRESHOLD = 18;
 
 /**
  * 把图片地址解码成 8x8 灰度指纹
