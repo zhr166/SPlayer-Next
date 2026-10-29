@@ -312,6 +312,21 @@ const lookupInStorefront = async (
     }
   }
 
+  // 歌曲搜索可能只返回标准版/单曲，专辑版（如 The Encore）搜不到对应歌曲，
+  // 因此再按专辑名直接搜专辑，命中同名专辑即取它的动效封面
+  const albumTerm = `${params.album ?? ""} ${params.artist}`.trim();
+  if (albumTerm && params.album) {
+    for (const searchTerm of searchTerms(albumTerm, storefront)) {
+      const search = await requestAmp(
+        `/catalog/${storefront}/search?term=${encodeURIComponent(searchTerm)}&types=albums&limit=10&extend=editorialVideo`,
+        token,
+      );
+      const albums: any[] = search?.results?.albums?.data ?? [];
+      for (const album of albums) keepBest(await considerAlbum(album));
+      if (best && (best as { score: number }).score >= 0.99) break;
+    }
+  }
+
   // 专辑名几乎一致（≥0.9）才允许借用；明显不同则放弃，避免串封面
   const chosen = best as { url: string; score: number; artwork: string | null } | null;
   if (!chosen || chosen.score < 0.9) return null;
