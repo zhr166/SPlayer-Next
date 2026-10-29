@@ -23,10 +23,12 @@ const JA_SHINJITAI_RE = /[楽図広気売駅円芸転伝沢浜桜鉄県検険厳
 
 /** 日文曲目优先日本区，其次韩国区（两地日文曲库与动效封面覆盖更全） */
 const KANA_STOREFRONTS = ["jp", "kr", "tw", "hk", "us"];
+/** 韩文曲目优先韩国区，其次日本区（日区收录大量 K-pop 发行） */
+const KOREAN_STOREFRONTS = ["kr", "jp", "tw", "hk", "us"];
 /** 中文曲目优先港台区，中文发行在港台区收录更全 */
 const HAN_STOREFRONTS = ["cn", "tw", "hk", "sg", "us", "jp"];
 /** 西文曲目优先美加区：日区会把英文曲名本土化成片假名，反而不易命中 */
-const LATIN_STOREFRONTS = ["us", "ca", "jp", "tw", "hk"];
+const LATIN_STOREFRONTS = ["us", "ca", "jp", "kr", "tw", "hk"];
 
 /**
  * 按曲目文字种类决定地区回退顺序
@@ -37,7 +39,7 @@ const LATIN_STOREFRONTS = ["us", "ca", "jp", "tw", "hk"];
 const resolveStorefrontOrder = (title: string, artist: string): string[] => {
   const text = `${title}${artist}`;
   if (KANA_RE.test(text)) return KANA_STOREFRONTS;
-  if (HANGUL_RE.test(text)) return KANA_STOREFRONTS;
+  if (HANGUL_RE.test(text)) return KOREAN_STOREFRONTS;
   // 纯汉字标题也可能来自日文，命中日文新字体时优先日本区
   if (JA_SHINJITAI_RE.test(text)) return KANA_STOREFRONTS;
   if (HAN_RE.test(text)) return HAN_STOREFRONTS;
