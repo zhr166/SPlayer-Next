@@ -75,6 +75,8 @@ export interface AppleMusicMotionResult {
   url: string;
   /** 候选专辑的静态封面地址，用于与曲目封面做指纹比对 */
   artwork: string | null;
+  /** 专辑名是否精确命中（精确命中时指纹仅作参考） */
+  exact: boolean;
 }
 
 export interface AppleMusicApi {

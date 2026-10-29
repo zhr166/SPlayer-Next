@@ -264,21 +264,26 @@ const lookupInStorefront = async (
   storefront: string,
   params: AppleMusicMotionParams,
   token: string,
-): Promise<{ url: string; artwork: string | null } | null> => {
+): Promise<{ url: string; artwork: string | null; exact: boolean } | null> => {
   const considerAlbum = async (
     album: any,
-  ): Promise<{ url: string; score: number; artwork: string | null } | null> => {
+  ): Promise<{ url: string; score: number; artwork: string | null; exact: boolean } | null> => {
     const url = readMotionUrl(album);
     if (!url) return null;
     const albumName = album?.attributes?.name ?? "";
     const artwork = readArtworkUrl(album);
-    if (isSameAlbum(params.album ?? "", albumName)) return { url, score: 1, artwork };
-    return { url, score: albumSimilarity(params.album ?? "", albumName), artwork };
+    if (isSameAlbum(params.album ?? "", albumName)) return { url, score: 1, artwork, exact: true };
+    return {
+      url,
+      score: albumSimilarity(params.album ?? "", albumName),
+      artwork,
+      exact: false,
+    };
   };
 
-  let best: { url: string; score: number; artwork: string | null } | null = null;
+  let best: { url: string; score: number; artwork: string | null; exact: boolean } | null = null;
   const keepBest = (
-    candidate: { url: string; score: number; artwork: string | null } | null,
+    candidate: { url: string; score: number; artwork: string | null; exact: boolean } | null,
   ): void => {
     if (candidate && (!best || candidate.score > best.score)) best = candidate;
   };
@@ -328,9 +333,14 @@ const lookupInStorefront = async (
   }
 
   // 专辑名几乎一致（≥0.9）才允许借用；明显不同则放弃，避免串封面
-  const chosen = best as { url: string; score: number; artwork: string | null } | null;
+  const chosen = best as {
+    url: string;
+    score: number;
+    artwork: string | null;
+    exact: boolean;
+  } | null;
   if (!chosen || chosen.score < 0.9) return null;
-  return { url: chosen.url, artwork: chosen.artwork };
+  return { url: chosen.url, artwork: chosen.artwork, exact: chosen.exact };
 };
 
 /**

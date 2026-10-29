@@ -15,6 +15,8 @@ export interface DynamicCoverResult {
   format: "mp4" | "hls";
   /** 候选专辑的静态封面，用于判断是否与曲目封面同一张 */
   artwork?: string | null;
+  /** 专辑名是否精确命中 */
+  exact?: boolean;
 }
 
 const CACHE_LIMIT = 60;
