@@ -87,8 +87,24 @@ const findNeteaseSongId = async (track: Track): Promise<string | null> => {
         if (!itemVariants.has(variant)) return false;
       }
       const names = normalize(item.artists?.map((one) => one.name).join(" "));
-      if (!targetArtist) return true;
-      return names === targetArtist || names.includes(targetArtist) || targetArtist.includes(names);
+      if (
+        targetArtist &&
+        !(names === targetArtist || names.includes(targetArtist) || targetArtist.includes(names))
+      )
+        return false;
+      const albumName = normalize(item.album?.name ?? "");
+      const targetAlbum = normalize(track.album?.name ?? "");
+      if (
+        albumName &&
+        targetAlbum &&
+        !(
+          albumName === targetAlbum ||
+          albumName.includes(targetAlbum) ||
+          targetAlbum.includes(albumName)
+        )
+      )
+        return false;
+      return true;
     });
     return matched?.id ?? null;
   } catch {

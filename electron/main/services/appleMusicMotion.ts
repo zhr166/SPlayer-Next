@@ -146,8 +146,18 @@ const isSameSong = (song: any, params: AppleMusicMotionParams): boolean => {
   }
   const artist = normalize(song?.attributes?.artistName ?? "");
   const target = normalize(params.artist);
-  if (!target) return true;
-  return artist === target || artist.includes(target) || target.includes(artist);
+  if (target && !(artist === target || artist.includes(target) || target.includes(artist)))
+    return false;
+  // 同一首歌在不同发行（单曲/专辑/Deluxe）里封面不同，专辑名不一致时不能借用动效封面
+  const album = normalize(song?.attributes?.albumName ?? "");
+  const targetAlbum = normalize(params.album ?? "");
+  if (
+    album &&
+    targetAlbum &&
+    !(album === targetAlbum || album.includes(targetAlbum) || targetAlbum.includes(album))
+  )
+    return false;
+  return true;
 };
 
 /**
