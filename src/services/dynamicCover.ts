@@ -33,9 +33,13 @@ const remember = (key: string, value: DynamicCoverResult | null): DynamicCoverRe
   return value;
 };
 
+/** 内容分级等元数据噪声：QQ/酷狗常把它拼进歌名或专辑名，比较前必须剥离 */
+const NOISE_RE = /\b(explicit|clean|explicit version|clean version)\b/gi;
+
 /** 归一化文本：去掉空格、标点与括号内容，便于比较曲名 */
 const normalize = (text: string): string =>
   (text ?? "")
+    .replace(NOISE_RE, "")
     .toLowerCase()
     .replace(/[(（\[【].*?[)）\]】]/g, "")
     .replace(
@@ -46,7 +50,7 @@ const normalize = (text: string): string =>
 /** 版本标记词：remix / live / cover 等，归一化会去掉括号，需要单独比较 */
 /** 专辑版本后缀：Encore / Deluxe 等属于不同发行，封面不同 */
 const EDITION_RE =
-  /(encore|deluxe|bonus|edition|remaster|expanded|anniversary|special|complete|collector|explicit|clean)/i;
+  /(encore|deluxe|bonus|edition|remaster|expanded|anniversary|special|complete|collector)/i;
 const VARIANT_RE =
   /(remix|live|cover|instrumental|karaoke|acoustic|version|edit|mix|sped ?up|nightcore|tribute|piano)/i;
 
@@ -96,6 +100,23 @@ const isSameAlbum = (trackAlbum: string, candidateAlbum: string): boolean => {
 };
 
 /**
+ * 计算两个专辑名的相似度（归一化后的公共前缀占比）
+ * @param trackAlbum - 曲目专辑名
+ * @param candidateAlbum - 候选专辑名
+ * @returns 0 到 1 之间的相似度
+ */
+const albumSimilarity = (trackAlbum: string, candidateAlbum: string): number => {
+  const a = normalize(trackAlbum);
+  const b = normalize(candidateAlbum);
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  const limit = Math.min(a.length, b.length);
+  let common = 0;
+  while (common < limit && a[common] === b[common]) common++;
+  return common / Math.max(a.length, b.length);
+};
+
+/**
  * 按曲名与歌手在网易云找同一首歌
  *
  * 网易云的动态封面只接受站内歌曲 ID，非网易云来源需要先匹配到对应曲目
@@ -114,24 +135,36 @@ const findNeteaseSongId = async (track: Track): Promise<string | null> => {
     const result = await neteaseSearch.songs(keyword, 0, 10);
     const title = normalize(track.title);
     const targetArtist = normalize(artist ?? "");
-    const matched = result.items.find((item) => {
+    let best: { id: string; score: number } | null = null;
+    for (const item of result.items) {
       const name = normalize(item.title);
-      if (!name || name !== title) return false;
+      if (!name || name !== title) continue;
       // 版本标记必须一致，否则会拿到 remix / live 等其他封面的动态封面
       const itemVariants = variantsOf(item.title);
+      let variantOk = true;
       for (const variant of variantsOf(track.title)) {
-        if (!itemVariants.has(variant)) return false;
+        if (!itemVariants.has(variant)) {
+          variantOk = false;
+          break;
+        }
       }
+      if (!variantOk) continue;
       const names = normalize(item.artists?.map((one) => one.name).join(" "));
       if (
         targetArtist &&
         !(names === targetArtist || names.includes(targetArtist) || targetArtist.includes(names))
       )
-        return false;
-      if (!isSameAlbum(track.album?.name ?? "", item.album?.name ?? "")) return false;
-      return true;
-    });
-    return matched?.id ?? null;
+        continue;
+      const albumName = item.album?.name ?? "";
+      // 专辑一致直接采用；否则按相似度取最接近的一个
+      const score = isSameAlbum(track.album?.name ?? "", albumName)
+        ? 1
+        : albumSimilarity(track.album?.name ?? "", albumName);
+      if (!best || score > best.score) best = { id: item.id, score };
+    }
+    // 相似度不足则不借用，避免封面串图
+    const chosen = best as { id: string; score: number } | null;
+    return chosen && chosen.score >= 0.9 ? chosen.id : null;
   } catch {
     return null;
   }

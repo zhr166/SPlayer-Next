@@ -97,9 +97,13 @@ const readMotionUrl = (album: any): string | null => {
   return video?.motionDetailSquare?.video ?? video?.motionSquareVideo1x1?.video ?? null;
 };
 
+/** 内容分级等元数据噪声：QQ/酷狗常把它拼进歌名或专辑名，比较前必须剥离 */
+const NOISE_RE = /\b(explicit|clean|explicit version|clean version)\b/gi;
+
 /** 归一化文本：去掉空格、标点与括号内容，便于比较曲名 */
 const normalize = (text: string): string =>
   (text ?? "")
+    .replace(NOISE_RE, "")
     .toLowerCase()
     .replace(/[(（\[【].*?[)）\]】]/g, "")
     .replace(
@@ -120,7 +124,7 @@ const normalize = (text: string): string =>
 /** 版本标记词：remix / live / cover 等，归一化会把括号去掉，必须单独比较 */
 /** 专辑版本后缀：Encore / Deluxe 等属于不同发行，封面不同 */
 const EDITION_RE =
-  /(encore|deluxe|bonus|edition|remaster|expanded|anniversary|special|complete|collector|explicit|clean)/i;
+  /(encore|deluxe|bonus|edition|remaster|expanded|anniversary|special|complete|collector)/i;
 const VARIANT_RE =
   /(remix|live|cover|instrumental|karaoke|acoustic|version|edit|mix|sped ?up|nightcore|tribute|piano)/i;
 
@@ -169,6 +173,27 @@ const isSameAlbum = (trackAlbum: string, candidateAlbum: string): boolean => {
   return track === candidate || track.includes(candidate) || candidate.includes(track);
 };
 
+/**
+ * 计算两个专辑名的相似度（归一化后的公共前缀占比）
+ *
+ * 同曲不同发行时专辑名往往只差一个后缀，用相似度挑最接近的一个，
+ * 避免因为名称不完全相同就放弃动态封面
+ *
+ * @param trackAlbum - 曲目专辑名
+ * @param candidateAlbum - 候选专辑名
+ * @returns 0 到 1 之间的相似度
+ */
+const albumSimilarity = (trackAlbum: string, candidateAlbum: string): number => {
+  const a = normalize(trackAlbum);
+  const b = normalize(candidateAlbum);
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  const limit = Math.min(a.length, b.length);
+  let common = 0;
+  while (common < limit && a[common] === b[common]) common++;
+  return common / Math.max(a.length, b.length);
+};
+
 const isSameSong = (song: any, params: AppleMusicMotionParams): boolean => {
   const rawName = song?.attributes?.name ?? "";
   const name = normalize(rawName);
@@ -185,7 +210,6 @@ const isSameSong = (song: any, params: AppleMusicMotionParams): boolean => {
   if (target && !(artist === target || artist.includes(target) || target.includes(artist)))
     return false;
   // 同一首歌在不同发行（单曲/专辑/Deluxe）里封面不同，专辑名不一致时不能借用动效封面
-  if (!isSameAlbum(params.album ?? "", song?.attributes?.albumName ?? "")) return false;
   return true;
 };
 
@@ -216,8 +240,9 @@ const searchTerms = (term: string, storefront: string): string[] => {
 /**
  * 在指定地区查询曲目所属专辑的动效封面
  *
- * 先按歌名找到同一首歌，再用该歌曲的专辑关系取动效封面；
- * 找不到匹配歌曲时返回 null，宁可没有动态封面也不使用错误专辑的封面
+ * 先按歌名找到同一首歌（可命中多个不同发行的候选），再逐个取专辑动效封面，
+ * 用专辑相似度挑最接近的一个：名称一致或版本一致直接采用，
+ * 否则要求相似度达到阈值，避免借用毫不相干的发行封面
  *
  * @param storefront - 商店地区
  * @param params - 曲目元信息
@@ -229,33 +254,50 @@ const lookupInStorefront = async (
   params: AppleMusicMotionParams,
   token: string,
 ): Promise<string | null> => {
+  const considerAlbum = async (album: any): Promise<{ url: string; score: number } | null> => {
+    const url = readMotionUrl(album);
+    if (!url) return null;
+    const albumName = album?.attributes?.name ?? "";
+    if (isSameAlbum(params.album ?? "", albumName)) return { url, score: 1 };
+    return { url, score: albumSimilarity(params.album ?? "", albumName) };
+  };
+
+  let best: { url: string; score: number } | null = null;
+  const keepBest = (candidate: { url: string; score: number } | null): void => {
+    if (candidate && (!best || candidate.score > best.score)) best = candidate;
+  };
+
   if (params.songId) {
     const data = await requestAmp(
       `/catalog/${storefront}/songs/${params.songId}?include=albums&extend=editorialVideo`,
       token,
     );
-    const url = readMotionUrl(data?.data?.[0]?.relationships?.albums?.data?.[0]);
-    if (url) return url;
+    keepBest(await considerAlbum(data?.data?.[0]?.relationships?.albums?.data?.[0]));
   }
 
   const term = `${params.title} ${params.artist}`.trim();
-  if (!term) return null;
-  for (const searchTerm of searchTerms(term, storefront)) {
-    const search = await requestAmp(
-      `/catalog/${storefront}/search?term=${encodeURIComponent(searchTerm)}&types=songs&limit=10`,
-      token,
-    );
-    const songs: any[] = search?.results?.songs?.data ?? [];
-    const matched = songs.find((song) => isSameSong(song, params));
-    if (!matched) continue;
-    const detail = await requestAmp(
-      `/catalog/${storefront}/songs/${matched.id}?include=albums&extend=editorialVideo`,
-      token,
-    );
-    const url = readMotionUrl(detail?.data?.[0]?.relationships?.albums?.data?.[0]);
-    if (url) return url;
+  if (term) {
+    for (const searchTerm of searchTerms(term, storefront)) {
+      const search = await requestAmp(
+        `/catalog/${storefront}/search?term=${encodeURIComponent(searchTerm)}&types=songs&limit=10`,
+        token,
+      );
+      const songs: any[] = (search?.results?.songs?.data ?? []).filter((song) =>
+        isSameSong(song, params),
+      );
+      for (const song of songs.slice(0, 5)) {
+        const detail = await requestAmp(
+          `/catalog/${storefront}/songs/${song.id}?include=albums&extend=editorialVideo`,
+          token,
+        );
+        keepBest(await considerAlbum(detail?.data?.[0]?.relationships?.albums?.data?.[0]));
+      }
+      if (best && (best as { score: number }).score >= 0.99) break;
+    }
   }
-  return null;
+
+  // 专辑名几乎一致（≥0.9）才允许借用；明显不同则放弃，避免串封面
+  return best && (best as { score: number }).score >= 0.9 ? (best as { url: string }).url : null;
 };
 
 /**
