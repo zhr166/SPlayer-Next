@@ -57,6 +57,7 @@ export const resolveDynamicCover = async (
   const motion = await window.api.appleMusic.motion({
     title: track.title,
     artist: artist ?? "",
+    album: track.album?.name,
     songId: track.source === "appleMusic" ? track.id : undefined,
     storefront,
   });

@@ -61,6 +61,8 @@ export interface AppleMusicMotionParams {
   title: string;
   /** 歌手名 */
   artist: string;
+  /** 专辑名，用于在多个候选专辑中挑选匹配项 */
+  album?: string;
   /** 已知的 Apple Music 曲目 ID（Apple Music 来源时可直接定位） */
   songId?: string;
   /** 商店地区（两位国家码） */

@@ -66,7 +66,31 @@ const readMotionUrl = (album: any): string | null => {
 };
 
 /**
+ * 在候选专辑里挑选与曲目专辑名最接近的一个
+ * @param albums - 带动效封面的候选专辑
+ * @param albumName - 曲目所属专辑名
+ * @returns 命中的专辑，缺失时返回第一个候选
+ */
+const pickAlbum = (albums: any[], albumName?: string): any => {
+  const target = (albumName ?? "").trim().toLowerCase();
+  if (!target) return albums[0];
+  const exact = albums.find(
+    (album) => (album?.attributes?.name ?? "").trim().toLowerCase() === target,
+  );
+  if (exact) return exact;
+  const partial = albums.find((album) => {
+    const name = (album?.attributes?.name ?? "").toLowerCase();
+    return name.includes(target) || target.includes(name);
+  });
+  return partial ?? albums[0];
+};
+
+/**
  * 在指定地区查询曲目所属专辑的动效封面
+ *
+ * 搜索接口不返回 relationships，因此已知歌曲 ID 时直接查歌曲的专辑关系，
+ * 其他情况按专辑类型搜索，再按专辑名在候选里挑选。
+ *
  * @param storefront - 商店地区
  * @param params - 曲目元信息
  * @param token - 开发者令牌
@@ -77,34 +101,26 @@ const lookupInStorefront = async (
   params: AppleMusicMotionParams,
   token: string,
 ): Promise<string | null> => {
-  const songsPath = params.songId
-    ? `/catalog/${storefront}/songs/${params.songId}?include=albums&extend=editorialVideo`
-    : null;
-  if (songsPath) {
-    const data = await requestAmp(songsPath, token);
-    const album = data?.data?.[0]?.relationships?.albums?.data?.[0];
-    const url = readMotionUrl(album);
+  if (params.songId) {
+    const data = await requestAmp(
+      `/catalog/${storefront}/songs/${params.songId}?include=albums&extend=editorialVideo`,
+      token,
+    );
+    const url = readMotionUrl(data?.data?.[0]?.relationships?.albums?.data?.[0]);
     if (url) return url;
   }
 
   const term = `${params.title} ${params.artist}`.trim();
   if (!term) return null;
   const search = await requestAmp(
-    `/catalog/${storefront}/search?term=${encodeURIComponent(term)}&types=songs&limit=5`,
+    `/catalog/${storefront}/search?term=${encodeURIComponent(term)}&types=albums&limit=10&extend=editorialVideo`,
     token,
   );
-  const songs: any[] = search?.results?.songs?.data ?? [];
-  for (const song of songs) {
-    const albumId = song?.relationships?.albums?.data?.[0]?.id ?? song?.attributes?.albumId;
-    if (!albumId) continue;
-    const album = await requestAmp(
-      `/catalog/${storefront}/albums/${albumId}?extend=editorialVideo`,
-      token,
-    );
-    const url = readMotionUrl(album?.data?.[0]);
-    if (url) return url;
-  }
-  return null;
+  const albums: any[] = (search?.results?.albums?.data ?? []).filter((album) =>
+    readMotionUrl(album),
+  );
+  if (albums.length === 0) return null;
+  return readMotionUrl(pickAlbum(albums, params.album));
 };
 
 /**
