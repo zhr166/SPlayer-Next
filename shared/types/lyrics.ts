@@ -44,6 +44,8 @@ export type LyricData = {
   platform?: Platform;
   /** 区分平台原始歌词与 AMLL、本地 TTML 等解析提供方 */
   provider?: "amll" | "localTtml" | "appleMusic";
+  /** 歌词来源版本标识，用于增强结果缓存与版本切换 */
+  versionId?: string;
 } | null;
 
 /** 歌词时间片段 */
