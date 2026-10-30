@@ -353,10 +353,24 @@ const processLyricLanguage = (player = playerRef.value) => {
     for (const bgLine of root.querySelectorAll<HTMLElement>('[class*="lyricBgLine"]')) {
       const bgText = bgLine.textContent ?? "";
       if (!bgText.trim()) continue;
-      const bgLanguage = detectTextLanguage(bgText) ?? "und-Latn";
-      bgLine.lang = bgLanguage;
-      const bgFamily = lyricFontFamilyFor(bgLanguage);
-      if (bgFamily) bgLine.style.fontFamily = bgFamily;
+      bgLine.lang = detectTextLanguage(bgText) ?? "und-Latn";
+      // 背景行里可能同时有原文与译文，整行判定会一律落到中文，
+      // 因此逐个文本叶子节点按自身内容取字体
+      let styled = false;
+      for (const leaf of bgLine.querySelectorAll<HTMLElement>("*")) {
+        if (leaf.children.length > 0) continue;
+        const leafText = leaf.textContent ?? "";
+        if (!leafText.trim()) continue;
+        const leafLanguage = detectTextLanguage(leafText) ?? "und-Latn";
+        const leafFamily = lyricFontFamilyFor(leafLanguage);
+        if (leafFamily) leaf.style.fontFamily = leafFamily;
+        else leaf.style.removeProperty("font-family");
+        styled = true;
+      }
+      if (!styled) {
+        const bgFamily = lyricFontFamilyFor(detectTextLanguage(bgText) ?? "und-Latn");
+        if (bgFamily) bgLine.style.fontFamily = bgFamily;
+      }
     }
   }
 };
