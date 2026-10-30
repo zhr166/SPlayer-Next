@@ -190,6 +190,8 @@ export const useSettingsStore = defineStore(
 
     /** 歌词 */
     const lyric = reactive<LyricSettings>({
+      llmTranslation: false,
+      pronunciationOptimization: "off",
       lyricSourcePreference: "auto",
       lyricSourceOrder: [...DEFAULT_LYRIC_SOURCE_ORDER],
       lyricFormatOrder: [...DEFAULT_LYRIC_FORMAT_ORDER],
@@ -405,10 +407,11 @@ export const useSettingsStore = defineStore(
       storage: localStorage,
       omit: ["system"],
       afterHydrate: ({ store }) => {
-        const { lyric, appearance, player } = store as unknown as {
+        const { lyric, appearance, player, preset } = store as unknown as {
           lyric: LyricSettings;
           appearance: AppearanceSettings;
           player: PlayerSettings;
+          preset: PresetSettings;
         };
         const legacyLyric = lyric as LyricSettings & { cjkTransform?: string };
         const legacyPreferenceMap: Record<string, ChineseScriptPreference> = {
@@ -440,6 +443,13 @@ export const useSettingsStore = defineStore(
           player.automixCrossfadeFallback = true;
         if (typeof lyric.detectBackgroundLyrics !== "boolean") {
           lyric.detectBackgroundLyrics = true;
+        }
+        if (typeof lyric.llmTranslation !== "boolean") lyric.llmTranslation = false;
+        if (!(["off", "llm", "dictionary"] as const).includes(lyric.pronunciationOptimization)) {
+          lyric.pronunciationOptimization = "off";
+        }
+        if (!Array.isArray(preset.skipTrackKeywords)) {
+          preset.skipTrackKeywords = [...DEFAULT_SKIP_TRACK_KEYWORDS];
         }
         if (typeof lyric.fallbackTranslation !== "boolean") {
           lyric.fallbackTranslation = true;
