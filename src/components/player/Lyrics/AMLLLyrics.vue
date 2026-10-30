@@ -121,6 +121,10 @@ const wrapperRef = ref<HTMLDivElement | null>(null);
 
 /** 容器尺寸监听，尺寸变化后需要重排歌词 */
 let resizeObserver: ResizeObserver | undefined;
+/** 监听行元素重建，重建后需要重新应用行语言与字体 */
+let rowObserver: MutationObserver | undefined;
+/** 行重建后的重应用调度句柄 */
+let rowApplyHandle: number | undefined;
 /** 时间线采样定时器 */
 let tickTimer: number | undefined;
 /** 最近一次外部时间推送时刻，用于判断核心时钟是否停住 */
@@ -263,6 +267,29 @@ const handleLineClick = (e: Event) => {
 };
 
 // 为所有主歌词行设置 html lang 属性
+/** 西文优先的兜底字体栈，避免西文落到中文字体的拉丁字形上 */
+const LATIN_FIRST_STACK =
+  '-apple-system, "SF Pro Text", "Helvetica Neue", "Segoe UI", Arial, sans-serif';
+
+/**
+ * 按语种取设置里的字体族
+ *
+ * 翻译、音译、背景行不在同一层容器，靠 :lang() 的 CSS 变量可能拿不到，
+ * 这里显式解析字体族，作为兜底写入内联样式。
+ *
+ * @param language - 行或叶子节点的语种
+ * @returns 字体族字符串，未配置时退回全局歌词字体
+ */
+const lyricFontFamilyFor = (language?: string): string => {
+  const lyric = settings.lyric;
+  if (language === "zh-CN" || language === "yue")
+    return lyric.fontFamilyChinese || lyric.fontFamily;
+  if (language === "ja") return lyric.fontFamilyJapanese || lyric.fontFamily;
+  if (language === "ko") return lyric.fontFamilyKorean || lyric.fontFamily;
+  if (language === "und-Latn") return lyric.fontFamilyLatin || LATIN_FIRST_STACK;
+  return lyric.fontFamily;
+};
+
 const processLyricLanguage = (player = playerRef.value) => {
   const lyricGroups = player?.currentLyricGroups;
   if (!Array.isArray(lyricGroups) || lyricGroups.length === 0) return;
@@ -304,23 +331,32 @@ const processLyricLanguage = (player = playerRef.value) => {
         const subLine = lyricLineElement.querySelector<HTMLElement>('[class*="lyricSubLine"]');
         if (subLine) {
           const subText = subLine.textContent ?? "";
-          if (subText.trim()) subLine.lang = detectTextLanguage(subText) ?? "zh-CN";
+          const subLanguage = detectTextLanguage(subText) ?? "zh-CN";
+          subLine.lang = subLanguage;
+          const subFamily = lyricFontFamilyFor(subLanguage);
+          if (subFamily) subLine.style.fontFamily = subFamily;
         }
         for (const roman of lyricLineElement.querySelectorAll<HTMLElement>(
           '[class*="romanWord"]',
         )) {
           roman.lang = "und-Latn";
+          const romanFamily = lyricFontFamilyFor("und-Latn");
+          if (romanFamily) roman.style.fontFamily = romanFamily;
         }
       }
     }
   }
-  // 背景和声行由内核单独渲染，重排后可能丢失 lang，按类名兜底一次
   const root = wrapperRef.value;
+
+  // 背景和声行由内核单独渲染，重排后可能丢失 lang，按类名兜底一次
   if (root) {
     for (const bgLine of root.querySelectorAll<HTMLElement>('[class*="lyricBgLine"]')) {
       const bgText = bgLine.textContent ?? "";
       if (!bgText.trim()) continue;
-      bgLine.lang = detectTextLanguage(bgText) ?? "und-Latn";
+      const bgLanguage = detectTextLanguage(bgText) ?? "und-Latn";
+      bgLine.lang = bgLanguage;
+      const bgFamily = lyricFontFamilyFor(bgLanguage);
+      if (bgFamily) bgLine.style.fontFamily = bgFamily;
     }
   }
 };
@@ -461,6 +497,8 @@ onMounted(async () => {
   await nextFrame();
   if (playerRef.value !== player) return;
   player.calcLayout(LayoutReason.ConfigChange);
+  // 布局会重建行元素，上一轮的 lang 与内联字体随之丢失，这里补一次
+  processLyricLanguage(player);
   player.update(0);
 
   // 首行若被排到可视区之外，说明首次布局基于未稳定的容器尺寸，强制按当前进度重算一次
@@ -481,6 +519,7 @@ onMounted(async () => {
       current.onResize();
       current.setCurrentTime(getCurrentTime() + status.lyricOffsetMs, true);
       current.calcLayout(LayoutReason.Seek);
+      processLyricLanguage(current);
       current.update(0);
       void window.api.lyrics.log(
         "info",
@@ -505,9 +544,22 @@ onMounted(async () => {
     void window.api.lyrics.log("info", `[perf] amll resize h=${height} w=${width}`);
     current.onResize();
     current.calcLayout(LayoutReason.Resize);
+    processLyricLanguage(current);
     current.update(0);
   });
-  if (wrapperRef.value) resizeObserver.observe(wrapperRef.value);
+  if (wrapperRef.value) {
+    resizeObserver.observe(wrapperRef.value);
+    // 内核重排会整体重建行节点，监听后统一补一次应用，避免要等交互才生效
+    rowObserver?.disconnect();
+    rowObserver = new MutationObserver(() => {
+      if (rowApplyHandle !== undefined) return;
+      rowApplyHandle = requestAnimationFrame(() => {
+        rowApplyHandle = undefined;
+        processLyricLanguage();
+      });
+    });
+    rowObserver.observe(wrapperRef.value, { childList: true, subtree: true });
+  }
 
   // 观察时间线是否随播放推进：hot 长期为 0 说明核心时钟没有前进
   // 250ms 自检：外部时间推送一旦停住就自己补，避免核心时钟冻结导致歌词不滚动
@@ -530,6 +582,12 @@ onUnmounted(() => {
   document.removeEventListener("visibilitychange", handleVisibility);
   resizeObserver?.disconnect();
   resizeObserver = undefined;
+  rowObserver?.disconnect();
+  rowObserver = undefined;
+  if (rowApplyHandle !== undefined) {
+    cancelAnimationFrame(rowApplyHandle);
+    rowApplyHandle = undefined;
+  }
   if (tickTimer !== undefined) window.clearInterval(tickTimer);
   tickTimer = undefined;
   pauseRaf();
