@@ -1,13 +1,7 @@
 <script setup lang="ts">
 import { LayoutAlignAnchor, LayoutReason } from "@applemusic-like-lyrics/core";
-import {
-  LYRIC_LATIN_LETTERS_FAMILY,
-  LYRIC_SCRIPT_FONT_FAMILY_JA,
-  LYRIC_SCRIPT_FONT_FAMILY_ZH,
-} from "@/services/lyricFontFaces";
 import type { LyricLine } from "@shared/types/lyrics";
 import { detectTextLanguage } from "@/utils/lyric/language";
-import { normalizeLyricFontWeight } from "@/utils/lyric/fontWeight";
 import type { LargerLyricText, LyricFloatAnimationIntensity } from "@/types/settings";
 import { SPlayerLyricPlayer as CoreLyricPlayer } from "./amll-player";
 import { useSettingsStore } from "@/stores/settings";
@@ -124,31 +118,6 @@ const settings = useSettingsStore();
 const status = useStatusStore();
 
 const wrapperRef = ref<HTMLDivElement | null>(null);
-/**
- * 歌词容器字体栈
- *
- * 0.6 的歌词行使用 CSS Modules 哈希类名，无法再用类名或 :lang 选择器挂字体，
- * 这里在容器上给一条完整字体栈：脚本字体族负责按码位分流西文/假名/谚文/汉字，
- * 后面的语种字体链作为缺字回退。
- */
-const lyricFontStack = computed(() => {
-  const lyric = settings.lyric;
-  const chain = (value: string): string[] =>
-    (value ?? "")
-      .split(",")
-      .map((name) => name.trim().replace(/^["']|["']$/g, ""))
-      .filter(Boolean)
-      .map((name) => `"${name}"`);
-  return [
-    `"${LYRIC_SCRIPT_FONT_FAMILY_ZH}"`,
-    `"${LYRIC_SCRIPT_FONT_FAMILY_JA}"`,
-    ...chain(lyric.fontFamilyLatin),
-    ...chain(lyric.fontFamilyJapanese),
-    ...chain(lyric.fontFamilyChinese),
-    ...chain(lyric.fontFamilyKorean),
-    ...chain(lyric.fontFamily),
-  ].join(", ");
-});
 
 /** 容器尺寸监听，尺寸变化后需要重排歌词 */
 let resizeObserver: ResizeObserver | undefined;
@@ -294,85 +263,6 @@ const handleLineClick = (e: Event) => {
 };
 
 // 为所有主歌词行设置 html lang 属性
-/** 只含西文字形的字体，不能出现在语种字体链里，否则会抢走假名/汉字 */
-const LATIN_ONLY_FAMILIES = new Set([
-  "sf pro",
-  "sf pro display",
-  "sf pro text",
-  "segoe ui",
-  "helvetica",
-  "helvetica neue",
-  "arial",
-  "roboto",
-]);
-
-/** 把逗号分隔的字体链拆成干净家族名数组 */
-const parseChain = (chain: string): string[] =>
-  (chain ?? "")
-    .split(",")
-    .map((item) => item.trim().replace(/^["']|["']$/g, ""))
-    .filter(Boolean);
-
-/** 语种字体缺字时的兜底族名（按本机实际注册名） */
-const SCRIPT_ALIASES: Record<string, string[]> = {
-  ja: ["Hiragino Sans GB", "Hiragino Sans GB W6", "Hiragino Sans", "Yu Gothic UI"],
-  ko: ["Apple SD Gothic Neo", "Malgun Gothic"],
-  zh: [".苹方-简", "PingFang SC", ".PingFang SC", "苹方-简", "Microsoft YaHei"],
-};
-
-/**
- * 按行语言组合行级字体栈
- *
- * 西文字体放最前，字母命中它；假名/谚文/汉字在它里面没有字形，会回退到后面的语种字体，
- * 因此同一行内中英混排也能各用各的。语种链里会剔除纯西文字体并追加本机兜底族名。
- * @param language - 该行语言标记
- * @returns 可直接写入 fontFamily 的字体栈
- */
-const HAN_TEXT_RE = /\p{Script=Han}/u;
-const KANA_TEXT_RE = /[\p{Script=Hiragana}\p{Script=Katakana}]/u;
-const HANGUL_TEXT_RE = /\p{Script=Hangul}/u;
-
-const lineFontStack = (language: string | undefined, text: string): string => {
-  const tag = (language ?? "").toLowerCase();
-  const lyric = settings.lyric;
-  // 字体只按文本判定：含假名/谚文用对应语种，其余含汉字的行一律中文栈
-  // （语言判定为 und-Hani / und-Latn 的行同样含汉字，不能落到系统默认中文字体）
-  const scriptKey =
-    HAN_TEXT_RE.test(text) || tag === "und-hani"
-      ? KANA_TEXT_RE.test(text)
-        ? "ja"
-        : HANGUL_TEXT_RE.test(text)
-          ? "ko"
-          : "zh"
-      : tag.startsWith("ja")
-        ? "ja"
-        : tag.startsWith("ko")
-          ? "ko"
-          : tag.startsWith("zh") || tag === "yue"
-            ? "zh"
-            : "";
-  // 只有字母交给西文字体，数字与标点留给中文字体，避免混排时字重不一致
-  const latin = `"${LYRIC_LATIN_LETTERS_FAMILY}"`;
-  const scriptChain = scriptKey
-    ? parseChain(
-        scriptKey === "ja"
-          ? lyric.fontFamilyJapanese
-          : scriptKey === "ko"
-            ? lyric.fontFamilyKorean
-            : lyric.fontFamilyChinese,
-      )
-    : [];
-  const families = [
-    ...(latin ? [latin] : []),
-    ...scriptChain.filter((name) => !LATIN_ONLY_FAMILIES.has(name.toLowerCase())),
-    ...(scriptKey ? SCRIPT_ALIASES[scriptKey] : []),
-  ];
-  // 去重并加引号，带前导点的隐藏族名（如 .苹方-简）必须加引号
-  return Array.from(new Set(families))
-    .map((name) => `"${name}"`)
-    .join(", ");
-};
-
 const processLyricLanguage = (player = playerRef.value) => {
   const lyricGroups = player?.currentLyricGroups;
   if (!Array.isArray(lyricGroups) || lyricGroups.length === 0) return;
@@ -405,35 +295,6 @@ const processLyricLanguage = (player = playerRef.value) => {
         } else {
           lyricLineElement.removeAttribute("lang");
           lyricMainLineElement.removeAttribute("lang");
-        }
-        // 0.6 的行元素类名是哈希值，靠 lang + 选择器不可靠，直接写内联字体栈
-        const stack = lineFontStack(language, lineText);
-        if (stack) {
-          lyricLineElement.style.fontFamily = stack;
-          lyricMainLineElement.style.fontFamily = stack;
-        } else {
-          lyricLineElement.style.removeProperty("font-family");
-          lyricMainLineElement.style.removeProperty("font-family");
-        }
-
-        // 字重与合成策略显式写在行元素上，避免不同字体各自推导出不同粗细
-        const weight = String(normalizeLyricFontWeight(settings.lyric.fontWeight));
-        lyricLineElement.style.fontWeight = weight;
-        lyricLineElement.style.fontSynthesis = "none";
-        lyricMainLineElement.style.fontWeight = weight;
-        lyricMainLineElement.style.fontSynthesis = "none";
-
-        // 翻译与音译可能嵌在主行元素内部，会继承主行字体；
-        // 遍历行内所有文本叶子节点，按各自内容重新选栈，日文歌的中文翻译才能落到苹方
-        for (const leaf of lyricLineElement.querySelectorAll<HTMLElement>("*")) {
-          if (leaf.children.length > 0 || leaf === lyricMainLineElement) continue;
-          const leafText = leaf.textContent ?? "";
-          if (!leafText.trim()) continue;
-          const leafStack = lineFontStack(undefined, leafText);
-          if (leafStack) leaf.style.fontFamily = leafStack;
-          else leaf.style.removeProperty("font-family");
-          leaf.style.fontWeight = weight;
-          leaf.style.fontSynthesis = "none";
         }
       }
     }
@@ -795,12 +656,7 @@ defineExpose({
 </script>
 
 <template>
-  <div
-    ref="wrapperRef"
-    class="amll-lyrics-container"
-    :class="contentVisible ? 'is-visible' : ''"
-    :style="{ fontFamily: lyricFontStack, fontSynthesis: 'none' }"
-  />
+  <div ref="wrapperRef" class="amll-lyrics-container" :class="contentVisible ? 'is-visible' : ''" />
   <Teleport v-if="bottomLineEl" :to="bottomLineEl">
     <slot name="bottom" />
   </Teleport>

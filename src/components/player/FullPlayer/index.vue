@@ -2,12 +2,7 @@
 import { useStatusStore } from "@/stores/status";
 import { useMediaStore } from "@/stores/media";
 import { useSettingsStore } from "@/stores/settings";
-import { normalizeLyricFontWeight } from "@/utils/lyric/fontWeight";
 import { usePlaybackTime } from "@/composables/usePlaybackTime";
-import {
-  LYRIC_SCRIPT_FONT_FAMILY_JA,
-  LYRIC_SCRIPT_FONT_FAMILY_ZH,
-} from "@/services/lyricFontFaces";
 import { getCurrentTime } from "@/services/playback";
 import type { QualityLevel } from "@/utils/quality";
 import { useFavorite } from "@/composables/useFavorite";
@@ -274,50 +269,6 @@ const springConfig = computed(() =>
       },
 );
 
-/**
- * 分语种歌词字体栈
- *
- * 西文字体排在最前，只覆盖拉丁字符；缺字时按顺序回落到该行语言字体与全局歌词字体。
- * 这样不依赖 @font-face 的 local() 匹配，字体族名不标准也能正确分流
- */
-const lyricFontStacks = computed(() => {
-  // 设置里存的是字体链（逗号分隔），逐个加引号后拼成 font-family
-  const chain = (value: string): string[] =>
-    (value ?? "")
-      .split(",")
-      .map((name) => name.trim().replace(/^["']|["']$/g, ""))
-      .filter(Boolean)
-      .map((name) => `"${name}"`);
-  const base = chain(settings.lyric.fontFamily);
-  const hanFallback = ['".PingFang SC"', '"PingFang SC"', '".萍方-简"'];
-  const build = (family: string, cjk: string): string =>
-    [`"${family}"`, ...chain(cjk), ...hanFallback, ...base].join(", ");
-  return {
-    zh: build(LYRIC_SCRIPT_FONT_FAMILY_ZH, settings.lyric.fontFamilyChinese),
-    ja: build(LYRIC_SCRIPT_FONT_FAMILY_JA, settings.lyric.fontFamilyJapanese),
-    ko: build(LYRIC_SCRIPT_FONT_FAMILY_ZH, settings.lyric.fontFamilyKorean),
-    latin: build(LYRIC_SCRIPT_FONT_FAMILY_ZH, ""),
-  };
-});
-
-/**
- * 歌词容器样式
- *
- * 字重收敛到本机字体真实档位（苹方最高 Semibold），并禁用合成粗体，
- * 否则 700 以上的请求会让中文出现假粗体，与西文/假名粗细不一致
- */
-const lyricAreaStyle = computed(() => ({
-  fontSize: lyricFontSize.value,
-  fontWeight: String(normalizeLyricFontWeight(settings.lyric.fontWeight)),
-  fontSynthesis: "none" as const,
-  fontFamily: settings.lyric.fontFamily || undefined,
-  "--lyric-font-zh": lyricFontStacks.value.zh,
-  "--lyric-font-ja": lyricFontStacks.value.ja,
-  "--lyric-font-ko": lyricFontStacks.value.ko,
-  "--lyric-font-latin": lyricFontStacks.value.latin,
-  mixBlendMode: settings.lyric.lyricBlendMode,
-}));
-
 const lyricFontSize = computed(() =>
   settings.lyric.adaptiveFontSize
     ? `calc(${settings.lyric.fontSize} / 1080 * 100vh)`
@@ -503,7 +454,19 @@ const showComments = (): void => {
               <PlayerData align="left" simple />
             </div>
             <!-- 歌词容器 -->
-            <div class="lyric-area relative flex-1 min-h-0" :style="lyricAreaStyle">
+            <div
+              class="lyric-area relative flex-1 min-h-0"
+              :style="{
+                fontSize: lyricFontSize,
+                fontWeight: String(settings.lyric.fontWeight),
+                fontFamily: settings.lyric.fontFamily || undefined,
+                '--lyric-font-zh': settings.lyric.fontFamilyChinese || undefined,
+                '--lyric-font-ja': settings.lyric.fontFamilyJapanese || undefined,
+                '--lyric-font-ko': settings.lyric.fontFamilyKorean || undefined,
+                '--lyric-font-latin': settings.lyric.fontFamilyLatin || undefined,
+                mixBlendMode: settings.lyric.lyricBlendMode,
+              }"
+            >
               <AMLLLyrics
                 v-if="lyricMounted && hasLyric && settings.lyric.engine === 'amll'"
                 ref="lyricRef"
