@@ -311,6 +311,15 @@ const processLyricLanguage = (player = playerRef.value) => {
       }
     }
   }
+  // 背景和声行由内核单独渲染，重排后可能丢失 lang，按类名兜底一次
+  const root = wrapperRef.value;
+  if (root) {
+    for (const bgLine of root.querySelectorAll<HTMLElement>('[class*="lyricBgLine"]')) {
+      const bgText = bgLine.textContent ?? "";
+      if (!bgText.trim()) continue;
+      bgLine.lang = detectTextLanguage(bgText) ?? "und-Latn";
+    }
+  }
 };
 
 /** 同步播放器配置 */
