@@ -50,7 +50,8 @@
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
-    "prepare": "husky"
+    "prepare": "husky",
+    "fetch:native": "node --experimental-strip-types scripts/fetch-native.ts"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
