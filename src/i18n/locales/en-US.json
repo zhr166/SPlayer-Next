@@ -514,7 +514,8 @@
       "saved": "Saved to Downloads",
       "fileSuffix": "Lyrics",
       "exportFailed": "Failed to export image",
-      "empty": "Nothing to copy"
+      "empty": "Nothing to copy",
+      "background": "Background lines"
     },
     "repeatMode": {
       "list": "Repeat all",

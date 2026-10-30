@@ -514,7 +514,8 @@
       "saved": "已保存到下载文件夹",
       "fileSuffix": "歌词分享",
       "exportFailed": "导出图片失败",
-      "empty": "没有可复制的内容"
+      "empty": "没有可复制的内容",
+      "background": "背景行"
     },
     "repeatMode": {
       "list": "列表循环",

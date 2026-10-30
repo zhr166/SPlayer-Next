@@ -280,14 +280,17 @@ const processLyricLanguage = (player = playerRef.value) => {
         const lyricLineInfo = lyricLine as LyricLine;
         const lineText = lyricLineInfo.words.map((word) => word.word).join("");
         // 副行：翻译是中文、音译是拉丁，直接按内容定性，避免沿用主行语言（日文歌的翻译会拿到日文字体）
+        // 优先按实际文本判定语种：AMLL 给的 language 常为 und-Hani 或空值，
+        // 会让主行落到容器字体，英文用上中文字体的拉丁字形
+        const detectedLanguage = detectTextLanguage(lineText);
         const language =
           lineIndex === 1
             ? lyricLineInfo.translatedLyric
-              ? "zh-CN"
+              ? (detectTextLanguage(lyricLineInfo.translatedLyric) ?? "zh-CN")
               : lyricLineInfo.romanLyric
                 ? "und-Latn"
-                : (detectTextLanguage(lineText) ?? lyricLineInfo.language)
-            : lyricLineInfo.language;
+                : (detectedLanguage ?? lyricLineInfo.language)
+            : (detectedLanguage ?? lyricLineInfo.language);
         // 行根元素也带 lang，副行（音译/翻译）才会命中对应语种字体
         if (language) {
           lyricLineElement.lang = language;
