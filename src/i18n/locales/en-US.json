@@ -523,7 +523,8 @@
     "shuffleMode": {
       "on": "Shuffle on",
       "off": "Shuffle off"
-    }
+    },
+    "automixing": "AutoMix"
   },
   "lyricManager": {
     "trackTitle": "Lyric Management",
@@ -924,7 +925,11 @@
       "showMore": "More Contributors",
       "collapse": "Collapse",
       "commit": "Commit",
-      "date": "Date"
+      "date": "Date",
+      "dependencies": {
+        "lyrics": "Apple Music-style lyrics display library",
+        "neteaseApi": "NCM API backup and enhancements"
+      }
     },
     "storeVersion": "Store",
     "language": {
@@ -1290,7 +1295,8 @@
       "testChannelTitle": "Switch to a Test Channel",
       "testChannelContent": "Beta and Alpha channels receive test releases early. Alpha releases may be highly unstable. Switch anyway?",
       "kugouLoginVersionTitle": "Switch KG Login Version",
-      "kugouLoginVersionContent": "After switching, the current credentials will not match the new version. You must log out and scan the QR code again, or VIP privileges and high-quality playback will stop working. Switch anyway?"
+      "kugouLoginVersionContent": "After switching, the current credentials will not match the new version. You must log out and scan the QR code again, or VIP privileges and high-quality playback will stop working. Switch anyway?",
+      "transitionHighResourceContent": "Playback transitions are resource-intensive and are intended for users with higher-performance devices.\nThis feature is still in testing, and for some tracks the transition may currently sound worse than a plain track change.\nEnabling it also turns on track preloading, song caching and streaming caching, which increases memory, CPU, network and disk usage. Enable it anyway?"
     },
     "useAMSpring": {
       "label": "Spring Animation Debug Switch",
@@ -2258,6 +2264,14 @@
         "ui": {
           "label": "Interface",
           "desc": "Can extend or modify the app interface"
+        },
+        "library": {
+          "label": "Library",
+          "desc": "Can search the local library and read track metadata"
+        },
+        "api": {
+          "label": "Platform APIs",
+          "desc": "Call music platform APIs using the current session"
         }
       }
     },
@@ -2442,10 +2456,11 @@
       "label": "Transition mode",
       "description": "Adjust how songs sound when they change",
       "none": "No transition",
-      "crossfade": "Crossfade"
+      "crossfade": "Crossfade",
+      "automix": "AutoMix"
     },
     "transitionPreference": {
-      "label": "Handoff preference",
+      "label": "Mix handoff preference",
       "description": "Adjust when the transition starts and how long songs overlap; Eager starts earlier and lasts longer",
       "conservative": "Conservative",
       "standard": "Standard",
@@ -2580,6 +2595,31 @@
     "playerBgIsolationDithering": {
       "label": "Dithering",
       "description": "Adds faint noise to remove gradient banding"
+    },
+    "automixCrossfadeFallback": {
+      "label": "Crossfade when mixing fails",
+      "description": "Crossfade when tracks can't be mixed"
+    },
+    "automixComponents": {
+      "label": "AutoMix model management",
+      "description": "Models for the AutoMix effect; falls back to the default effect when required models aren't ready",
+      "configure": "Configure models",
+      "download": "Download",
+      "ready": "Installed",
+      "unsupported": "Unavailable",
+      "missing": "Not installed",
+      "error": "Installation failed"
+    },
+    "automixModels": {
+      "beat": {
+        "label": "Beat model (Beat This!)"
+      },
+      "demucs": {
+        "label": "Stem model (Demucs)"
+      },
+      "runtime": {
+        "label": "Analysis runtime"
+      }
     }
   },
   "collection": {
@@ -2638,7 +2678,8 @@
         "copyId": "Copy Cloud ID",
         "copyUrl": "Share Cloud Link"
       }
-    }
+    },
+    "disc": "Disc {disc}"
   },
   "artist": {
     "label": "Artists",

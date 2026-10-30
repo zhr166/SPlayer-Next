@@ -2,6 +2,7 @@ import type { LyricFormat } from "@shared/types/lyrics";
 import { DEFAULT_LYRIC_FORMAT_ORDER as DEFAULT_LYRIC_FORMAT_ORDER_SHARED } from "@shared/types/lyrics";
 import type { Platform } from "@shared/types/platform";
 import type { TransitionPreference } from "@shared/types/player";
+import type { TransitionMode } from "@shared/types/automix";
 import type { LyricAlignment } from "lyric-dom";
 import type { QualityLevel } from "@/utils/quality";
 
@@ -314,9 +315,11 @@ export interface PlayerSettings {
   /** 是否为不同输出设备独立记忆音量 */
   rememberDeviceVolume: boolean;
   /** 切歌过渡方式 */
-  transitionMode: "none" | "crossfade";
+  transitionMode: TransitionMode;
   /** 切歌过渡激进程度 */
   transitionPreference: TransitionPreference;
+  /** AutoMix 对拍与原速桥接都不适用时是否改用交叉过渡 */
+  automixCrossfadeFallback: boolean;
   /** 歌曲列表点击播放行为 */
   songListPlayBehavior: PlayBehavior;
   /** Apple Music 搜索使用的商店地区（两位国家码） */

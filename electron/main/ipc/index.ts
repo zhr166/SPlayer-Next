@@ -24,6 +24,7 @@ import { registerPlaylistIpc } from "./playlist";
 import { registerRecognitionIpc } from "./recognition";
 import { registerOpenccIpc } from "./opencc";
 import { registerAppleMusicIpc } from "./appleMusic";
+import { registerAutoMixIpc } from "./automix";
 
 /**
  * 注册所有 IPC 处理
@@ -32,6 +33,7 @@ import { registerAppleMusicIpc } from "./appleMusic";
 export const registerIpcHandlers = (onStartupComplete: () => void): void => {
   registerSystemIpc();
   registerPlayerIpc();
+  registerAutoMixIpc();
   registerConfigIpc();
   registerLibraryIpc();
   registerNowPlayingIpc();

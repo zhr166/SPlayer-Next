@@ -33,6 +33,7 @@ import { AiModelApi } from "@shared/types/ai";
 import { PlaylistApi } from "@shared/types/playlist";
 import { OpenccApi } from "@shared/types/opencc";
 import { AppleMusicApi } from "@shared/types/appleMusic";
+import type { AutoMixApi } from "@shared/types/automix";
 
 declare global {
   interface Window {
@@ -41,6 +42,7 @@ declare global {
       config: ConfigApi;
       player: PlayerApi;
       appleMusic: AppleMusicApi;
+      automix: AutoMixApi;
       system: {
         installType: "nsis" | "portable" | "appx" | "dmg" | "appimage";
         platform: NodeJS.Platform;

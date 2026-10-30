@@ -14,6 +14,8 @@ docs/.vitepress/cache
 docs/.vitepress/dist
 skills-lock.json
 *.log*
+__pycache__/
+*.py[cod]
 .vscode/settings.json
 .idea
 
@@ -33,3 +35,6 @@ package-lock.json
 TODO.md
 !vendor/amll-core/dist
 !vendor/amll-core/dist/**
+
+# 上游 CI 工作流需要 workflow 权限，本 fork 暂不同步
+.github/workflows/automix.yml

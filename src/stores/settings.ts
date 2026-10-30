@@ -172,6 +172,7 @@ export const useSettingsStore = defineStore(
       rememberDeviceVolume: false,
       transitionMode: "none",
       transitionPreference: "standard",
+      automixCrossfadeFallback: true,
       songListPlayBehavior: "current",
       dynamicCover: false,
     });
@@ -404,9 +405,10 @@ export const useSettingsStore = defineStore(
       storage: localStorage,
       omit: ["system"],
       afterHydrate: ({ store }) => {
-        const { lyric, appearance } = store as unknown as {
+        const { lyric, appearance, player } = store as unknown as {
           lyric: LyricSettings;
           appearance: AppearanceSettings;
+          player: PlayerSettings;
         };
         const legacyLyric = lyric as LyricSettings & { cjkTransform?: string };
         const legacyPreferenceMap: Record<string, ChineseScriptPreference> = {
@@ -425,6 +427,8 @@ export const useSettingsStore = defineStore(
             legacyPreferenceMap[legacyLyric.cjkTransform] ?? "default";
           delete legacyLyric.cjkTransform;
         }
+        if (player.transitionMode !== "crossfade" && player.transitionMode !== "automix")
+          player.transitionMode = "none";
         if (
           !(["default", "simplified", "traditional"] as const).includes(
             lyric.chineseScriptPreference,
@@ -432,6 +436,8 @@ export const useSettingsStore = defineStore(
         ) {
           lyric.chineseScriptPreference = "default";
         }
+        if (typeof player.automixCrossfadeFallback !== "boolean")
+          player.automixCrossfadeFallback = true;
         if (typeof lyric.detectBackgroundLyrics !== "boolean") {
           lyric.detectBackgroundLyrics = true;
         }
