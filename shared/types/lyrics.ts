@@ -331,3 +331,19 @@ export interface LyricsApi {
   /** 弹出目录选择器，返回所选本地 TTML 歌词库目录 */
   pickLyricRepoDir: () => Promise<string | null>;
 }
+
+/** 在线或本地歌词库的独立来源描述 */
+export interface LyricSearchSource {
+  origin: ManagedLyricOrigin;
+  platform?: Platform;
+}
+
+/** 搜索结果仅携带曲目元数据，正文在选中后按需获取 */
+export interface LyricSearchSong {
+  id: string;
+  mid?: string;
+  title: string;
+  artists: string[];
+  album?: string;
+  duration: number;
+}
