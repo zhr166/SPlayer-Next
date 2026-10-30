@@ -263,6 +263,25 @@ const handleLineClick = (e: Event) => {
 };
 
 // 为所有主歌词行设置 html lang 属性
+/**
+ * 按语种取设置里的字体族
+ *
+ * 主行由 :lang() 的 CSS 变量控制；背景和声行不在同一层容器里，拿不到变量，
+ * 因此这里显式解析出字体族，避免回落到全局苹方。
+ *
+ * @param language - 行语种
+ * @returns 字体族字符串，未配置时返回全局字体
+ */
+const lyricFontFamilyFor = (language?: string): string => {
+  const lyric = useSettingsStore().lyric;
+  if (language === "zh-CN" || language === "yue")
+    return lyric.fontFamilyChinese || lyric.fontFamily;
+  if (language === "ja") return lyric.fontFamilyJapanese || lyric.fontFamily;
+  if (language === "ko") return lyric.fontFamilyKorean || lyric.fontFamily;
+  if (language === "und-Latn") return lyric.fontFamilyLatin || lyric.fontFamily;
+  return lyric.fontFamily;
+};
+
 const processLyricLanguage = (player = playerRef.value) => {
   const lyricGroups = player?.currentLyricGroups;
   if (!Array.isArray(lyricGroups) || lyricGroups.length === 0) return;
@@ -295,6 +314,14 @@ const processLyricLanguage = (player = playerRef.value) => {
         } else {
           lyricLineElement.removeAttribute("lang");
           lyricMainLineElement.removeAttribute("lang");
+        }
+        // 背景和声行不与主行共用容器，显式写入字体族，避免继承全局苹方
+        if (lineIndex === 1) {
+          const family = lyricFontFamilyFor(language);
+          for (const el of [lyricLineElement, lyricMainLineElement]) {
+            if (family) el.style.fontFamily = family;
+            else el.style.removeProperty("font-family");
+          }
         }
       }
     }
