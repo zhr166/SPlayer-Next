@@ -17,7 +17,7 @@
 
 import { inflate } from "node:zlib";
 import { promisify } from "node:util";
-import { formatLrcTime, parseKRC, toLRC } from "lyric-kit";
+import { formatLrcTime, parseKRC, toLRC } from "@shared/utils/lyricKitCompat";
 import { decodeName } from "./config";
 
 const inflateAsync = promisify(inflate);
@@ -57,14 +57,14 @@ const parseKrc = (raw: string): KrcParsed => {
   let text = raw.replace(/\r/g, "");
   if (HEAD_ID_REG.test(text)) text = text.replace(HEAD_ID_REG, "");
 
-  const result = parseKRC(text, { detectBackground: false });
-  const lrc = toLRC(result.lines);
+  const result = parseKRC(text, false);
+  const lrc = toLRC(result);
 
-  const transLines = result.lines
+  const transLines = result
     .filter((line) => line.translatedLyric)
     .map((line) => `[${formatLrcTime(line.startTime)}]${line.translatedLyric}`);
 
-  const romaLines = result.lines
+  const romaLines = result
     .filter((line) => line.romanLyric)
     .map((line) => `[${formatLrcTime(line.startTime)}]${line.romanLyric}`);
 

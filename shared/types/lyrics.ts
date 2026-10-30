@@ -39,13 +39,13 @@ export type LyricLanguage = "ja" | "ko" | "zh-CN" | "yue" | "und-Hani" | "und-La
 /** 歌词数据 */
 export type LyricData = {
   source: LyricSource;
+  /** 托管文件 UUID 或提供方与正文摘要 */
+  versionId?: string;
   format: LyricFormat;
   /** 在线歌词所属平台，仅 source=online 时有值 */
   platform?: Platform;
   /** 区分平台原始歌词与 AMLL、本地 TTML 等解析提供方 */
   provider?: "amll" | "localTtml" | "appleMusic";
-  /** 歌词来源版本标识，用于增强结果缓存与版本切换 */
-  versionId?: string;
 } | null;
 
 /** 歌词时间片段 */
@@ -70,10 +70,6 @@ export interface LyricWord extends LyricSpan {
 
 /** 一行歌词 */
 export interface LyricLine {
-  /** 自动补充的翻译及目标语言，原始歌词文件不改写 */
-  generatedTranslation?: { method: "llm"; language: string };
-  /** 自动补充或重新分词的发音 */
-  generatedPronunciation?: { method: "llm" | "dictionary"; alignment?: "line" | "word" };
   /** 主歌词语言，用于字形选择与 HTML lang */
   language?: LyricLanguage;
   /**
@@ -99,12 +95,22 @@ export interface LyricLine {
   isDuet: boolean;
   /** 是否强制按逐句歌词渲染，不使用逐字高亮 */
   isLineLyric?: boolean;
+  /** 词典或模型生成的译文 */
+  generatedTranslation?: { method: string; alignment?: string; language?: string };
+  /** 词典或模型生成的音译 */
+  generatedPronunciation?: { method: string; alignment?: string; language?: string };
 }
 
 /**
  * 歌词原始内容载荷：主 + 可选翻译 / 音译
  */
 export interface LyricInput {
+  /** 用于匹配度展示的来源曲目，不参与主播放队列 */
+  sourceTrack?: LyricSearchSong;
+  /** 已保存来源版本的精确平台身份 */
+  sourceExtra?: LyricMatchExtra;
+  /** 托管 AMLL 版本所绑定的平台 */
+  sourcePlatform?: Platform;
   /** 主歌词原始文本 */
   content: string;
   /** 翻译原始文本 */
@@ -113,6 +119,29 @@ export interface LyricInput {
   /** 罗马音原始文本 */
   romaji?: string;
   romajiFormat?: LyricFormat;
+}
+
+/** 在线或本地歌词库的独立来源描述 */
+export interface LyricSearchSource {
+  origin: ManagedLyricOrigin;
+  platform?: Platform;
+}
+
+/** 搜索结果仅携带曲目元数据，正文在选中后按需获取 */
+export interface LyricSearchSong {
+  id: string;
+  mid?: string;
+  title: string;
+  artists: string[];
+  album?: string;
+  duration: number;
+}
+
+/** 来源曲目搜索分页，不在内存中累计所有页面 */
+export interface LyricSourceSearchPage {
+  items: LyricSearchSong[];
+  hasMore: boolean;
+  total?: number;
 }
 
 /** 用户手动管理的歌词记录 */
@@ -124,6 +153,19 @@ export interface ManagedLyric extends LyricInput {
   versionId: string;
   origin: ManagedLyricOrigin;
   track?: Track;
+}
+
+/** 全曲目管理使用的轻量摘要，不携带歌词正文 */
+export interface ManagedLyricSummary {
+  trackSource: string;
+  trackId: string;
+  track?: Track;
+  format: LyricFormat;
+  filename: string | null;
+  importedAt: number;
+  versionCount: number;
+  /** 歌词文件路径（本地库） */
+  filePath?: string;
 }
 
 /** 手动歌词版本的来源。 */
@@ -221,7 +263,8 @@ export type LyricMatchResponse =
   { ok: true; data: LyricMatchResult | null } | { ok: false; error: string };
 
 /** TTML 抓取 IPC 响应 */
-export type LyricTTMLResponse = { ok: true; data: string | null } | { ok: false; error: string };
+export type LyricTTMLResponse =
+  { ok: true; data: string | null; matchedId?: string } | { ok: false; error: string };
 
 /** Apple Music TTML 凭据状态，不暴露令牌明文。 */
 export interface AppleMusicTTMLStatus {
@@ -248,7 +291,7 @@ export interface LyricsApi {
   /** 重新扫描歌曲歌词目录并同步数据库 */
   refreshManaged: (track: Track) => Promise<boolean>;
   /** 列出所有手动管理歌词 */
-  listManaged: () => Promise<Array<ManagedLyric & { trackSource: string; trackId: string }>>;
+  listManaged: () => Promise<ManagedLyricSummary[]>;
   /** 搜索本地曲库曲目，供歌词复制目标选择 */
   searchTracks: (query: string) => Promise<Track[]>;
   /** 搜索在线曲目，供歌词复制目标选择 */
@@ -285,6 +328,11 @@ export interface LyricsApi {
   setTrackPreference: (track: Track, preference: TrackLyricPreference) => Promise<void>;
   /** 获取单曲的本地版本与在线匹配候选 */
   getTrackCandidates: (track: Track) => Promise<LyricMatchCandidate[]>;
+  /** 仅获取指定在线或歌词库来源，不刷新其他来源 */
+  getTrackSourceCandidates: (
+    track: Track,
+    origin: ManagedLyricOrigin,
+  ) => Promise<LyricMatchCandidate[]>;
   /** 仅获取单曲的本地/managed 候选（不含在线搜索），供歌词管理面板先显示本地候选 */
   getTrackCandidatesLocal: (track: Track) => Promise<LyricMatchCandidate[]>;
   /** 保存优化后的歌词（创建/覆盖本地歌词；已是本地歌词则直接写文件），返回是否成功 */
@@ -297,6 +345,34 @@ export interface LyricsApi {
   selectTrackCandidate: (track: Track, candidate: LyricMatchCandidate) => Promise<boolean>;
   /** 删除非活跃的本地歌词版本 */
   deleteManagedVersion: (track: Track, versionId: string) => Promise<boolean>;
+  /** 搜索内置歌词来源的元数据分页 */
+  searchSourceTracks: (
+    source: LyricSearchSource,
+    keyword: string,
+    offset: number,
+  ) => Promise<LyricSourceSearchPage>;
+  /** 按精确来源曲目加载一个版本 */
+  loadSourceVersion: (
+    source: LyricSearchSource,
+    song: LyricSearchSong | string,
+  ) => Promise<LyricMatchCandidate | null>;
+  /** 将所选来源版本保存为托管歌词，其他来源不受影响 */
+  saveSourceVersion: (track: Track, candidate: LyricMatchCandidate) => Promise<LyricMatchCandidate>;
+  /** 重新获取当前版本，不改变歌曲的来源选择 */
+  refetchCandidate: (
+    track: Track,
+    candidate: LyricMatchCandidate,
+  ) => Promise<LyricMatchCandidate | null>;
+  /** 删除本地文件或该在线版本的本地缓存 */
+  deleteCandidate: (track: Track, candidate: LyricMatchCandidate) => Promise<boolean>;
+  /** 读取当前版本的独立歌词偏移 */
+  getVersionOffset: (track: Track, candidate: LyricMatchCandidate) => Promise<number>;
+  /** 保存当前版本的独立歌词偏移 */
+  setVersionOffset: (
+    track: Track,
+    candidate: LyricMatchCandidate,
+    offsetMs: number,
+  ) => Promise<number>;
   /** 选择目录并批量导入带网易云元数据的 TTML */
   importNeteaseTtmlDirectory: () => Promise<TtmlImportResult | null>;
   /** 按 id 直取某平台歌词 */
@@ -330,20 +406,4 @@ export interface LyricsApi {
   matchLocalTTML: (track: Track, forceQuery?: boolean) => Promise<LyricTTMLResponse>;
   /** 弹出目录选择器，返回所选本地 TTML 歌词库目录 */
   pickLyricRepoDir: () => Promise<string | null>;
-}
-
-/** 在线或本地歌词库的独立来源描述 */
-export interface LyricSearchSource {
-  origin: ManagedLyricOrigin;
-  platform?: Platform;
-}
-
-/** 搜索结果仅携带曲目元数据，正文在选中后按需获取 */
-export interface LyricSearchSong {
-  id: string;
-  mid?: string;
-  title: string;
-  artists: string[];
-  album?: string;
-  duration: number;
 }

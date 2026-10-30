@@ -24,6 +24,8 @@ export interface NowPlayingSnapshot {
   lyricOffsetMs: number;
   /** position 真实成立的主进程时钟（Date.now 毫秒），接收端用于补偿其过期时长 */
   sendTimestamp: number;
+  /** 设备输出延迟（毫秒） */
+  deviceLatencyMs?: number;
 }
 
 /** 主进程 → 窗口：播放位置锚点 */

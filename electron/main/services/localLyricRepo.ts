@@ -3,7 +3,7 @@
  *
  * 用户指定一个目录作为 TTML 歌词仓库。按需扫描目录下所有 .ttml，解析 AMLL
  * `<amll:meta>` 头（musicName / artists / ncmMusicId / qqMusicId）建立索引：
- * - 平台 id（网易云 / QQ）→ 文件路径（精确命中）
+ * - 平台 id（NCM / QQ）→ 文件路径（精确命中）
  * - 归一化标题 → 候选列表
  * 命中返回文件原文，交由渲染层 parseTTML 解析。
  *
@@ -19,6 +19,7 @@ import { store } from "@main/store";
 import { normalize } from "@main/apis/common/lyric/utils";
 import { buildFingerprint, getMatchedId } from "@main/database/lyricMatchCache";
 import { coreLog } from "@main/utils/logger";
+import type { LyricSearchSong, LyricSourceSearchPage } from "@shared/types/lyrics";
 import type { Track } from "@shared/types/player";
 import { normalizeTtml } from "@shared/utils/ttml";
 
@@ -27,6 +28,8 @@ interface NameCandidate {
   /** 归一化首艺术家，缺失为空串 */
   artist: string;
   file: string;
+  title?: string;
+  artistName?: string;
 }
 
 interface RepoIndex {
@@ -45,21 +48,26 @@ interface IndexCache {
 let cache: IndexCache | null = null;
 let building: { dir: string; promise: Promise<RepoIndex | null> } | null = null;
 
+interface TTMLMeta {
+  name?: string;
+  artist?: string;
+  ncmIds: string[];
+  qqIds: string[];
+}
+
 /** 从 TTML 文本头部提取 AMLL 元信息 */
-export const extractTtmlMeta = (
-  text: string,
-): { name?: string; artist?: string; ncmId?: string; qqId?: string } => {
+export const extractTtmlMeta = (text: string): TTMLMeta => {
   const bodyAt = text.indexOf("<body");
   const head = bodyAt > 0 ? text.slice(0, bodyAt) : text.slice(0, 8000);
-  const meta: { name?: string; artist?: string; ncmId?: string; qqId?: string } = {};
+  const meta: TTMLMeta = { ncmIds: [], qqIds: [] };
   for (const tag of head.matchAll(/<amll:meta\b[^>]*>/gi)) {
     const key = tag[0].match(/\bkey="([^"]*)"/)?.[1];
     const value = tag[0].match(/\bvalue="([^"]*)"/)?.[1];
     if (!key || !value) continue;
     if (key === "musicName" && !meta.name) meta.name = value;
     else if (key === "artists" && !meta.artist) meta.artist = value;
-    else if (key === "ncmMusicId" && !meta.ncmId) meta.ncmId = value;
-    else if (key === "qqMusicId" && !meta.qqId) meta.qqId = value;
+    else if (key === "ncmMusicId") meta.ncmIds.push(value);
+    else if (key === "qqMusicId") meta.qqIds.push(value);
   }
   return meta;
 };
@@ -124,18 +132,24 @@ const buildIndex = async (dir: string, files: string[]): Promise<RepoIndex> => {
       continue;
     }
     const meta = extractTtmlMeta(text);
-    for (const [id, byId] of [
-      [meta.ncmId, index.byNcm],
-      [meta.qqId, index.byQq],
+    for (const [ids, byId] of [
+      [meta.ncmIds, index.byNcm],
+      [meta.qqIds, index.byQq],
     ] as const) {
-      if (!id) continue;
-      const matches = byId.get(id);
-      if (matches) matches.push(file);
-      else byId.set(id, [file]);
+      for (const id of ids) {
+        const matches = byId.get(id);
+        if (matches) matches.push(file);
+        else byId.set(id, [file]);
+      }
     }
     if (meta.name) {
       const titleKey = normalize(meta.name);
-      const candidate: NameCandidate = { artist: normalize(meta.artist ?? ""), file };
+      const candidate: NameCandidate = {
+        title: meta.name,
+        artistName: meta.artist,
+        artist: normalize(meta.artist ?? ""),
+        file,
+      };
       const list = index.byTitle.get(titleKey);
       if (list) list.push(candidate);
       else index.byTitle.set(titleKey, [candidate]);
@@ -270,4 +284,61 @@ export const matchLocalTTML = async (track: Track, forceQuery = false): Promise<
   }
   // 兜底：平台 id 回查
   return forceQuery ? null : matchByCachedId(track, index);
+};
+
+/**
+ * 按标题与歌手词片搜索本地词库的所有候选，正文仍按需读取
+ * @param keyword - 模糊搜索词
+ * @param offset - 当前页起点
+ * @returns 至多五十条元数据与分页状态
+ */
+export const searchLocalLyricVersions = async (
+  keyword: string,
+  offset: number,
+): Promise<LyricSourceSearchPage> => {
+  const index = await getIndex();
+  if (!index) return { items: [], hasMore: false, total: 0 };
+  const tokens = keyword.trim().split(/\s+/u).map(normalize).filter(Boolean);
+  const matches = [...index.byTitle.values()]
+    .flat()
+    .filter((candidate) =>
+      tokens.every((token) =>
+        normalize((candidate.title ?? "") + (candidate.artistName ?? "")).includes(token),
+      ),
+    );
+  const items = matches.slice(offset, offset + 50).map((candidate): LyricSearchSong => ({
+    id: createHash("sha256").update(candidate.file).digest("hex"),
+    title: candidate.title ?? "",
+    artists: candidate.artistName ? [candidate.artistName] : [],
+    duration: 0,
+  }));
+  return { items, total: matches.length, hasMore: offset + items.length < matches.length };
+};
+
+/**
+ * 按索引生成的身份读取本地词库版本，拒绝任意路径输入
+ * @param id - 搜索结果的文件身份
+ * @returns 版本正文与来源元数据
+ */
+export const readLocalLyricVersion = async (
+  id: string,
+): Promise<{ content: string; song: LyricSearchSong } | null> => {
+  const index = await getIndex();
+  if (!index) return null;
+  for (const candidates of index.byTitle.values())
+    for (const candidate of candidates) {
+      if (createHash("sha256").update(candidate.file).digest("hex") !== id) continue;
+      const result = await readFileAutoEncoding(candidate.file);
+      if (!result.trim()) return null;
+      return {
+        content: result,
+        song: {
+          id,
+          title: candidate.title ?? "",
+          artists: candidate.artistName ? [candidate.artistName] : [],
+          duration: 0,
+        },
+      };
+    }
+  return null;
 };
