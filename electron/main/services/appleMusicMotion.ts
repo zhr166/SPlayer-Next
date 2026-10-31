@@ -303,8 +303,10 @@ const lookupInStorefront = async (
         `/catalog/${storefront}/search?term=${encodeURIComponent(searchTerm)}&types=songs&limit=10`,
         token,
       );
-      const songs: any[] = (search?.results?.songs?.data ?? []).filter((song) =>
-        isSameSong(song, params),
+      const allSongs: any[] = search?.results?.songs?.data ?? [];
+      const songs: any[] = allSongs.filter((song) => isSameSong(song, params));
+      coreLog.info(
+        `[am-motion] ${storefront} songs=${allSongs.length} matched=${songs.length} term=${searchTerm}`,
       );
       for (const song of songs.slice(0, 5)) {
         const detail = await requestAmp(
@@ -327,7 +329,15 @@ const lookupInStorefront = async (
         token,
       );
       const albums: any[] = search?.results?.albums?.data ?? [];
-      for (const album of albums) keepBest(await considerAlbum(album));
+      let usable = 0;
+      for (const album of albums) {
+        const candidate = await considerAlbum(album);
+        if (candidate) usable++;
+        keepBest(candidate);
+      }
+      coreLog.info(
+        `[am-motion] ${storefront} albums=${albums.length} withMotion=${usable} best=${(best as { score: number } | null)?.score ?? 0} term=${searchTerm}`,
+      );
       if (best && (best as { score: number }).score >= 0.99) break;
     }
   }
@@ -339,6 +349,9 @@ const lookupInStorefront = async (
     artwork: string | null;
     exact: boolean;
   } | null;
+  coreLog.info(
+    `[am-motion] ${storefront} chosen=${chosen ? `${chosen.score.toFixed(2)} exact=${chosen.exact}` : "none"}`,
+  );
   if (!chosen || chosen.score < 0.9) return null;
   return { url: chosen.url, artwork: chosen.artwork, exact: chosen.exact };
 };
@@ -356,6 +369,9 @@ export const getAppleMusicMotionCover = async (
 
   try {
     const token = await getDeveloperToken();
+    coreLog.info(
+      `[am-motion] start ${params.title} / ${params.artist} / album=${params.album ?? "-"} / song=${params.songId ?? "-"} / sf=${params.storefront}`,
+    );
     const storefronts = [
       params.storefront,
       ...resolveStorefrontOrder(params.title, params.artist),
