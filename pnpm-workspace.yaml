@@ -1,8 +1,5 @@
 packages: []
 
-patchedDependencies:
-  "@applemusic-like-lyrics/core": patches/@applemusic-like-lyrics__core@0.6.0.patch
-
 minimumReleaseAge: 4320
 allowBuilds:
   "@parcel/watcher": false
@@ -29,6 +26,5 @@ minimumReleaseAgeExclude:
 
 overrides:
   node-abi: ^4.33.0
-
 
 nodeLinker: hoisted
