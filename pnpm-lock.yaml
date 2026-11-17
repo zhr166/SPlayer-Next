@@ -166,7 +166,9 @@ overrides:
   node-abi: ^4.33.0
 
 patchedDependencies:
-  '@applemusic-like-lyrics/core@0.6.0': 61364f039eaa2d30414c0fb6c8c42a2b1ae020dba65a7530b813631ef9dfc11e
+  '@applemusic-like-lyrics/core@0.6.0':
+    hash: 61364f039eaa2d30414c0fb6c8c42a2b1ae020dba65a7530b813631ef9dfc11e
+    path: patches/@applemusic-like-lyrics__core@0.6.0.patch
 
 importers:
 
