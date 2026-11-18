@@ -14,7 +14,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@shared/*": ["./shared/*"],
-      "@windows/*": ["./windows/*"]
+      "@windows/*": ["./windows/*"],
+      "@applemusic-like-lyrics/core": ["./vendor/applemusic-like-lyrics/src/index.ts"]
     },
     "types": ["./auto-imports.d.ts", "./components.d.ts"]
   }

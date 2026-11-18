@@ -109,6 +109,14 @@ export default defineConfig({
         "@shared": resolve(__dirname, "shared"),
         "@windows": resolve(__dirname, "windows"),
         "@root": resolve(__dirname),
+        "@applemusic-like-lyrics/core/style.css": resolve(
+          __dirname,
+          "vendor/applemusic-like-lyrics/src/styles/index.css",
+        ),
+        "@applemusic-like-lyrics/core": resolve(
+          __dirname,
+          "vendor/applemusic-like-lyrics/src/index.ts",
+        ),
       },
     },
     plugins: [
