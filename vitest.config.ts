@@ -20,6 +20,12 @@ export default defineConfig({
       "@main": fileURLToPath(new URL("./electron/main", import.meta.url)),
       "@windows": fileURLToPath(new URL("./windows", import.meta.url)),
       "@root": fileURLToPath(new URL("./", import.meta.url)),
+      "@applemusic-like-lyrics/core/style.css": fileURLToPath(
+        new URL("./vendor/applemusic-like-lyrics/src/styles/index.css", import.meta.url),
+      ),
+      "@applemusic-like-lyrics/core": fileURLToPath(
+        new URL("./vendor/applemusic-like-lyrics/src/index.ts", import.meta.url),
+      ),
     },
   },
   plugins: [
