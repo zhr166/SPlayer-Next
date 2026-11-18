@@ -3,6 +3,7 @@ import type { Artist } from "@shared/types/player";
 import type { SSelectOption } from "@/components/ui/SSelect.vue";
 import type { QualityLevel } from "@/utils/quality";
 import { useLyricTrackManagerDialog } from "@/composables/useLyricTrackManagerDialog";
+import ExplicitTag from "@/components/list/ExplicitTag.vue";
 import { useMediaStore } from "@/stores/media";
 import { useSettingsStore } from "@/stores/settings";
 import { useStatusStore } from "@/stores/status";
@@ -222,6 +223,7 @@ const alignItems = computed(() => {
     <!-- 标题 -->
     <SMarquee fit class="max-w-full text-[2em] font-semibold leading-tight">
       {{ displayTrack.title }}
+      <ExplicitTag :explicit="displayTrack.explicit" class="ml-1 text-[0.6em]" />
     </SMarquee>
     <!-- 副标题/注释 -->
     <div
