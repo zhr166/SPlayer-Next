@@ -2238,6 +2238,13 @@
       "button": "清空全部",
       "confirmTitle": "清空全部資料庫快取？",
       "confirmDesc": "將刪除上方全部資料庫快取，操作不可恢復"
+    },
+    "localLyricMatchLevel": {
+      "label": "匹配強度",
+      "description": "控制本地 TTML 與當前歌曲的匹配嚴格程度",
+      "strict": "嚴格（平台 ID 匹配，或歌名與藝術家完全一致且專輯一致）",
+      "standard": "標準（推薦，歌名與藝術家匹配，優先匹配專輯）",
+      "loose": "寬鬆（僅歌名一致即可，同名不同曲可能誤配）"
     }
   },
   "collection": {

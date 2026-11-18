@@ -6,7 +6,10 @@ import enUS from "./locales/en-US.json";
 const i18n = createI18n({
   legacy: false,
   locale: "zh-CN",
-  fallbackLocale: "en-US",
+  fallbackLocale: {
+    "zh-TW": ["zh-CN", "en-US"],
+    default: ["en-US"],
+  },
   messages: {
     "zh-CN": zhCN,
     "zh-TW": zhTW,
