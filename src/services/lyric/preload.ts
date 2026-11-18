@@ -47,6 +47,7 @@ const buildContextKey = (): string => {
     settings.system.lyric.appleMusicTranslationScript,
     settings.system.localLyric.enableLocalTTMLOverride,
     settings.system.localLyric.repoDir,
+    settings.system.localLyric.matchLevel,
     streaming.activeServerId ?? "",
     plugins.list.map((plugin) => [
       plugin.manifest.id,

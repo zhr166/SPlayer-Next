@@ -377,6 +377,7 @@ export const installNextTrackPreloadWatchers = (): void => {
       settings.system.lyric.appleMusicTranslationScript,
       settings.system.localLyric.enableLocalTTMLOverride,
       settings.system.localLyric.repoDir,
+      settings.system.localLyric.matchLevel,
       plugins.list
         .map((plugin) =>
           JSON.stringify([
