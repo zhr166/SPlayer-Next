@@ -101,7 +101,7 @@ const densityClasses = computed(() => {
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
-              <span class="truncate font-medium" :class="densityClasses.name">
+              <span class="truncate select-text font-medium" :class="densityClasses.name">
                 {{ item.userName }}
               </span>
               <STag
@@ -134,10 +134,11 @@ const densityClasses = computed(() => {
               <span>{{ item.likedCount }}</span>
             </div>
             <SButton
-              variant="ghost"
+              :type="cover ? 'cover' : undefined"
+              variant="secondary"
               circle
               size="tiny"
-              class="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+              class="opacity-70 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
               :title="$t('comments.copyComment')"
               :aria-label="$t('comments.copyComment')"
               @click.stop="copy(item.text)"
@@ -146,7 +147,7 @@ const densityClasses = computed(() => {
             </SButton>
           </div>
         </div>
-        <p class="whitespace-pre-wrap break-words" :class="densityClasses.body">
+        <p class="whitespace-pre-wrap break-words select-text" :class="densityClasses.body">
           {{ item.text }}
         </p>
         <div
@@ -160,7 +161,7 @@ const densityClasses = computed(() => {
             :class="[densityClasses.replyText, cover ? 'text-cover/60' : 'text-on-surface-variant']"
             :data-reply-id="reply.id"
           >
-            <div class="min-w-0 flex-1">
+            <div class="min-w-0 flex-1 select-text">
               <span class="font-medium" :class="cover ? 'text-cover/85' : 'text-on-surface'">
                 {{ reply.userName }}：
               </span>
@@ -170,7 +171,7 @@ const densityClasses = computed(() => {
               variant="ghost"
               circle
               size="tiny"
-              class="shrink-0 opacity-0 group-hover/reply:opacity-100 focus-visible:opacity-100 transition-opacity"
+              class="shrink-0 opacity-60 group-hover/reply:opacity-100 focus-visible:opacity-100 transition-opacity"
               :title="$t('comments.copyReply')"
               :aria-label="$t('comments.copyReply')"
               @click.stop="copy(reply.text)"

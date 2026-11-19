@@ -452,6 +452,10 @@ export const useSettingsStore = defineStore(
         }
         if (typeof player.automixCrossfadeFallback !== "boolean")
           player.automixCrossfadeFallback = true;
+        // 流体背景渲染器只保留 mesh / pixi，旧配置回退到 mesh
+        if (player.playerBgRenderer !== "mesh" && player.playerBgRenderer !== "pixi") {
+          player.playerBgRenderer = "mesh";
+        }
         if (typeof lyric.detectBackgroundLyrics !== "boolean") {
           lyric.detectBackgroundLyrics = true;
         }

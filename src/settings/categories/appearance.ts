@@ -388,9 +388,7 @@ const appearanceCategory: SettingCategory = {
               visible: () => useSettingsStore().player.playerBgType === "animation",
               options: [
                 { value: "mesh", labelKey: "settings.playerBgRenderer.mesh" },
-                { value: "isolation", labelKey: "settings.playerBgRenderer.isolation" },
                 { value: "pixi", labelKey: "settings.playerBgRenderer.pixi" },
-                { value: "titanium", labelKey: "settings.playerBgRenderer.titanium" },
               ],
               defaultValue: "mesh",
             },
@@ -400,10 +398,7 @@ const appearanceCategory: SettingCategory = {
               binding: { store: "settings", path: "player.playerBgLightWave" },
               // 光波是 isolation 独有的明度调制；独立 isolation 背景与 isolation 引擎都能用
               // Apple Music 两种背景不提供 isolation 选项
-              visible: () =>
-                useSettingsStore().player.playerBgType === "isolation" ||
-                (useSettingsStore().player.playerBgType === "animation" &&
-                  useSettingsStore().player.playerBgRenderer === "isolation"),
+              visible: () => useSettingsStore().player.playerBgType === "isolation",
               defaultValue: false,
             },
             {
@@ -411,10 +406,7 @@ const appearanceCategory: SettingCategory = {
               type: "select",
               binding: { store: "settings", path: "player.playerBgIsolationPalette" },
               // Apple Music 两种背景不提供 isolation 选项
-              visible: () =>
-                useSettingsStore().player.playerBgType === "isolation" ||
-                (useSettingsStore().player.playerBgType === "animation" &&
-                  useSettingsStore().player.playerBgRenderer === "isolation"),
+              visible: () => useSettingsStore().player.playerBgType === "isolation",
               options: [
                 { value: "auto", labelKey: "settings.playerBgIsolationPalette.auto" },
                 { value: "kmeans", labelKey: "settings.playerBgIsolationPalette.kmeans" },
@@ -427,10 +419,7 @@ const appearanceCategory: SettingCategory = {
               type: "switch",
               binding: { store: "settings", path: "player.playerBgIsolationDithering" },
               // Apple Music 两种背景不提供 isolation 选项
-              visible: () =>
-                useSettingsStore().player.playerBgType === "isolation" ||
-                (useSettingsStore().player.playerBgType === "animation" &&
-                  useSettingsStore().player.playerBgRenderer === "isolation"),
+              visible: () => useSettingsStore().player.playerBgType === "isolation",
               defaultValue: true,
             },
             {
@@ -438,9 +427,7 @@ const appearanceCategory: SettingCategory = {
               type: "slider",
               binding: { store: "settings", path: "player.playerBgTitaniumGrain" },
               // 独立 Titanium 背景与流体下的 titanium 引擎共用这批参数
-              visible: () =>
-                useSettingsStore().player.playerBgType === "titanium" ||
-                useSettingsStore().player.playerBgRenderer === "titanium",
+              visible: () => useSettingsStore().player.playerBgType === "titanium",
               min: 0,
               max: 1,
               step: 0.05,
@@ -451,9 +438,7 @@ const appearanceCategory: SettingCategory = {
               type: "slider",
               binding: { store: "settings", path: "player.playerBgTitaniumSparkle" },
               // 独立 Titanium 背景与流体下的 titanium 引擎共用这批参数
-              visible: () =>
-                useSettingsStore().player.playerBgType === "titanium" ||
-                useSettingsStore().player.playerBgRenderer === "titanium",
+              visible: () => useSettingsStore().player.playerBgType === "titanium",
               min: 0,
               max: 1,
               step: 0.05,
@@ -464,9 +449,7 @@ const appearanceCategory: SettingCategory = {
               type: "slider",
               binding: { store: "settings", path: "player.playerBgTitaniumSheen" },
               // 独立 Titanium 背景与流体下的 titanium 引擎共用这批参数
-              visible: () =>
-                useSettingsStore().player.playerBgType === "titanium" ||
-                useSettingsStore().player.playerBgRenderer === "titanium",
+              visible: () => useSettingsStore().player.playerBgType === "titanium",
               min: 0,
               max: 1,
               step: 0.05,
@@ -477,9 +460,7 @@ const appearanceCategory: SettingCategory = {
               type: "slider",
               binding: { store: "settings", path: "player.playerBgTitaniumMetalness" },
               // 独立 Titanium 背景与流体下的 titanium 引擎共用这批参数
-              visible: () =>
-                useSettingsStore().player.playerBgType === "titanium" ||
-                useSettingsStore().player.playerBgRenderer === "titanium",
+              visible: () => useSettingsStore().player.playerBgType === "titanium",
               min: 0,
               max: 1,
               step: 0.05,
@@ -490,9 +471,7 @@ const appearanceCategory: SettingCategory = {
               type: "slider",
               binding: { store: "settings", path: "player.playerBgTitaniumCrestShiftMs" },
               // 独立 Titanium 背景与流体下的 titanium 引擎共用这批参数
-              visible: () =>
-                useSettingsStore().player.playerBgType === "titanium" ||
-                useSettingsStore().player.playerBgRenderer === "titanium",
+              visible: () => useSettingsStore().player.playerBgType === "titanium",
               min: 0,
               max: 6000,
               step: 100,
@@ -513,12 +492,7 @@ const appearanceCategory: SettingCategory = {
               type: "slider",
               binding: { store: "settings", path: "player.playerBgRenderScale" },
               // 钛金属细颗粒固定原生分辨率，缩放比对其无效，直接隐藏避免空拖
-              visible: () =>
-                useSettingsStore().player.playerBgType !== "titanium" &&
-                !(
-                  useSettingsStore().player.playerBgType === "animation" &&
-                  useSettingsStore().player.playerBgRenderer === "titanium"
-                ),
+              visible: () => useSettingsStore().player.playerBgType !== "titanium",
               min: 0.5,
               max: 2,
               step: 0.1,
@@ -544,11 +518,12 @@ const appearanceCategory: SettingCategory = {
             {
               key: "playerBgBeat",
               type: "switch",
-              // 仅流体/隔离/Titanium 提供开关；Apple Music 背景自己处理节奏（经典版为静态渐变）
-              visible: () =>
-                ["animation", "isolation", "titanium"].includes(
-                  useSettingsStore().player.playerBgType,
-                ),
+              // Pixi 渲染器与独立 isolation 背景不支持脉动；Apple Music 背景自己处理节奏
+              visible: () => {
+                const player = useSettingsStore().player;
+                if (player.playerBgType === "animation") return player.playerBgRenderer === "mesh";
+                return player.playerBgType === "titanium";
+              },
               binding: { store: "settings", path: "player.playerBgBeat" },
               defaultValue: false,
             },
