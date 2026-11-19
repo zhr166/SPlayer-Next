@@ -9,10 +9,6 @@ import { useSettingsStore } from "@/stores/settings";
 import * as queueStore from "@/stores/queue";
 import * as player from "@/core/player";
 
-/** 动态封面是否铺满布局提供的容器，由 AM 布局开启 */
-const props = defineProps<{ fullscreenMotion?: boolean }>();
-const emit = defineEmits<{ (event: "motionState", active: boolean): void }>();
-
 const media = useMediaStore();
 const status = useStatusStore();
 const settings = useSettingsStore();
@@ -170,25 +166,6 @@ watch([coverSrc, () => displayTrack.value?.cover], async () => {
 const motion = shallowRef<{ key: string; src: string } | null>(null);
 const motionReady = ref(false);
 
-/** 动态封面正在接管整个封面容器，供外层布局切换成全出血铺放 */
-const fullscreenActive = computed(() => !!props.fullscreenMotion && motion.value !== null);
-let fullscreenEmitTimer: ReturnType<typeof setTimeout> | undefined;
-// 收起时等视频淡出结束再切回方块，避免全出血画面提前被裁掉
-watch(fullscreenActive, (active) => {
-  if (fullscreenEmitTimer) {
-    clearTimeout(fullscreenEmitTimer);
-    fullscreenEmitTimer = undefined;
-  }
-  if (active) {
-    emit("motionState", true);
-    return;
-  }
-  fullscreenEmitTimer = setTimeout(() => {
-    fullscreenEmitTimer = undefined;
-    emit("motionState", false);
-  }, fadeDuration.value);
-});
-
 // 视频地址变化时重置就绪状态，让新视频重新淡入（动态切动态也有叠化）
 watch(
   () => motion.value?.src,
@@ -314,8 +291,6 @@ const releaseVideo = (el: Element) => {
 
 // 切换布局时组件直接卸载，不经过离场过渡
 onBeforeUnmount(() => {
-  emit("motionState", false);
-  if (fullscreenEmitTimer) clearTimeout(fullscreenEmitTimer);
   if (transitionTimer) clearTimeout(transitionTimer);
   if (pendingLayerTimer) clearTimeout(pendingLayerTimer);
   if (motionClearTimer) clearTimeout(motionClearTimer);
@@ -349,19 +324,7 @@ onBeforeUnmount(() => {
         loop
         playsinline
         class="absolute inset-0 z-2 size-full object-cover"
-        :style="[
-          { opacity: motionReady ? 1 : 0 },
-          fullscreenActive
-            ? {
-                maskImage:
-                  'linear-gradient(to right, transparent 0%, #000 8%, #000 68%, transparent 100%), linear-gradient(to bottom, #000 0%, #000 84%, transparent 100%)',
-                WebkitMaskImage:
-                  'linear-gradient(to right, transparent 0%, #000 8%, #000 68%, transparent 100%), linear-gradient(to bottom, #000 0%, #000 84%, transparent 100%)',
-                maskComposite: 'intersect',
-                WebkitMaskComposite: 'source-in',
-              }
-            : null,
-        ]"
+        :style="{ opacity: motionReady ? 1 : 0 }"
         @loadeddata="onVideoReady"
       />
     </Transition>

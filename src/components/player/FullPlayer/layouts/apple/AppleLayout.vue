@@ -19,9 +19,6 @@ const infoCentered = computed(() => !status.fullQueueOpen && centeredWithoutQueu
 
 const lyricVisible = computed(() => showLyric.value && hasLyric.value && !status.fullQueueOpen);
 
-/** 动态封面铺满左侧整列，静态封面保持居中圆角方块 */
-const motionActive = ref(false);
-
 /** 歌词面板正在过渡：只有这段时间才给合成层提示，空闲时保持可混合 */
 const lyricTransitioning = ref(false);
 let lyricTransitionTimer: ReturnType<typeof setTimeout> | undefined;
@@ -67,20 +64,11 @@ const toggleQueue = (): void => {
       :style="{ transform: infoCentered ? 'translateX(calc(50vw - 50%))' : undefined }"
     >
       <div class="w-[min(50vh,38vw)] flex flex-col items-center gap-[4vh]">
-        <!-- 动态时用等尺寸占位，封面改铺满左列但控件位置不变 -->
-        <div v-if="motionActive" class="w-full aspect-square" aria-hidden="true" />
         <PlayerCover
-          fullscreen-motion
-          class="[transition:transform_500ms_cubic-bezier(0.34,1.56,0.64,1),box-shadow_500ms_ease-out]"
-          :class="[
-            motionActive
-              ? 'absolute! inset-y-0! left-0! z-0 h-full! w-full! !aspect-auto !rounded-none !shadow-none'
-              : 'relative w-full aspect-square rounded-xl shadow-[0_16px_40px_rgba(0,0,0,0.3)]',
-            !motionActive && (isPlaying ? 'scale-100' : 'scale-90'),
-          ]"
-          @motion-state="motionActive = $event"
+          class="w-full aspect-square rounded-xl shadow-[0_16px_40px_rgba(0,0,0,0.3)] [transition:transform_500ms_cubic-bezier(0.34,1.56,0.64,1),box-shadow_500ms_ease-out]"
+          :class="isPlaying ? 'scale-100' : 'scale-90'"
         />
-        <AppleControls class="relative z-10" />
+        <AppleControls />
       </div>
     </div>
     <!-- 右侧歌词 -->
