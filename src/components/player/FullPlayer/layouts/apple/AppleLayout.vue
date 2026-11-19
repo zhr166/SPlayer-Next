@@ -75,14 +75,18 @@ const toggleQueue = (): void => {
     >
       <div
         class="flex flex-col"
-        :class="motionActive ? 'w-full gap-[2.6vh]' : 'w-[min(50vh,38vw)] items-center gap-[4vh]'"
+        :class="
+          motionActive
+            ? 'w-[min(55vw,68vh)] gap-[2.6vh]'
+            : 'w-[min(50vh,38vw)] items-center gap-[4vh]'
+        "
       >
         <PlayerCover
           fullscreen-motion
           class="[transition:transform_500ms_cubic-bezier(0.34,1.56,0.64,1),box-shadow_500ms_ease-out]"
           :class="[
             motionActive
-              ? 'relative w-full h-[68vh] !aspect-auto !rounded-none !shadow-none'
+              ? 'relative w-full aspect-square !rounded-none !shadow-none'
               : 'relative w-full aspect-square rounded-xl shadow-[0_16px_40px_rgba(0,0,0,0.3)]',
             !motionActive && (isPlaying ? 'scale-100' : 'scale-90'),
           ]"
