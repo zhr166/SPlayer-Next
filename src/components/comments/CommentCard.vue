@@ -2,6 +2,8 @@
 import type { MusicCommentItem } from "@shared/types/comment";
 import type { CommentDensity } from "@shared/types/settings";
 import { formatDate } from "@/utils/time";
+import { useCopyText } from "@/composables/useCopyText";
+import IconLucideCopy from "~icons/lucide/copy";
 
 interface Props {
   /** 评论数据 */
@@ -13,6 +15,8 @@ interface Props {
   /** 是否使用全屏播放器配色 */
   cover?: boolean;
 }
+
+const { copy } = useCopyText();
 
 const props = withDefaults(defineProps<Props>(), {
   creator: false,
@@ -68,7 +72,8 @@ const densityClasses = computed(() => {
 
 <template>
   <div
-    class="border border-solid transition-colors duration-150"
+    class="group border border-solid transition-colors duration-150"
+    :data-comment-id="item.id"
     :class="[
       cover
         ? 'border-cover/12 bg-gradient-to-br from-cover/10 via-cover/6 to-cover/3 ring-1 ring-cover/5 ring-inset hover:border-cover/20 hover:from-cover/14 hover:via-cover/8'
@@ -119,13 +124,26 @@ const densityClasses = computed(() => {
               </span>
             </div>
           </div>
-          <div
-            v-if="item.likedCount != null"
-            class="flex shrink-0 items-center gap-1 tabular-nums"
-            :class="[densityClasses.like, cover ? 'text-cover/50' : 'text-on-surface-variant']"
-          >
-            <IconLucideThumbsUp :class="densityClasses.likeIcon" />
-            <span>{{ item.likedCount }}</span>
+          <div class="flex shrink-0 items-center gap-1.5">
+            <div
+              v-if="item.likedCount != null"
+              class="flex items-center gap-1 tabular-nums"
+              :class="[densityClasses.like, cover ? 'text-cover/50' : 'text-on-surface-variant']"
+            >
+              <IconLucideThumbsUp :class="densityClasses.likeIcon" />
+              <span>{{ item.likedCount }}</span>
+            </div>
+            <SButton
+              variant="ghost"
+              circle
+              size="tiny"
+              class="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+              :title="$t('comments.copyComment')"
+              :aria-label="$t('comments.copyComment')"
+              @click.stop="copy(item.text)"
+            >
+              <template #icon><IconLucideCopy class="size-3.5" /></template>
+            </SButton>
           </div>
         </div>
         <p class="whitespace-pre-wrap break-words" :class="densityClasses.body">
@@ -138,13 +156,27 @@ const densityClasses = computed(() => {
           <div
             v-for="reply in item.reply"
             :key="reply.id"
-            class="break-words"
+            class="group/reply flex items-start justify-between gap-2 break-words"
             :class="[densityClasses.replyText, cover ? 'text-cover/60' : 'text-on-surface-variant']"
+            :data-reply-id="reply.id"
           >
-            <span class="font-medium" :class="cover ? 'text-cover/85' : 'text-on-surface'">
-              {{ reply.userName }}：
-            </span>
-            {{ reply.text }}
+            <div class="min-w-0 flex-1">
+              <span class="font-medium" :class="cover ? 'text-cover/85' : 'text-on-surface'">
+                {{ reply.userName }}：
+              </span>
+              {{ reply.text }}
+            </div>
+            <SButton
+              variant="ghost"
+              circle
+              size="tiny"
+              class="shrink-0 opacity-0 group-hover/reply:opacity-100 focus-visible:opacity-100 transition-opacity"
+              :title="$t('comments.copyReply')"
+              :aria-label="$t('comments.copyReply')"
+              @click.stop="copy(reply.text)"
+            >
+              <template #icon><IconLucideCopy class="size-3" /></template>
+            </SButton>
           </div>
         </div>
       </div>

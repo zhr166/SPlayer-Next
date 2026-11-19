@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { MusicCommentItem } from "@shared/types/comment";
 import type { CommentDensity } from "@shared/types/settings";
+import type { DropdownMenuItem } from "@/components/ui/SDropdownMenu.vue";
 import { layoutMasonry } from "@/utils/commentMasonry";
+import { useCopyText } from "@/composables/useCopyText";
+import IconLucideCopy from "~icons/lucide/copy";
 import CommentCard from "./CommentCard.vue";
 
 interface Props {
@@ -24,10 +27,75 @@ const props = withDefaults(defineProps<Props>(), {
   cover: false,
 });
 
+const { t } = useI18n();
+const { copy } = useCopyText();
+
 const GAPS: Record<CommentDensity, number> = { compact: 8, standard: 12, comfortable: 16 };
 const gap = computed(() => GAPS[props.density]);
 
 const rootRef = ref<HTMLElement | null>(null);
+const selectedText = ref("");
+const contextCommentText = ref("");
+const contextReplyText = ref("");
+
+/** 右键菜单：仅展示当前可复制的目标 */
+const contextMenuItems = computed<DropdownMenuItem[]>(() => {
+  const items: DropdownMenuItem[] = [];
+  if (selectedText.value) {
+    items.push({ key: "copySelection", label: t("comments.copy"), icon: markRaw(IconLucideCopy) });
+  }
+  if (contextReplyText.value) {
+    items.push({
+      key: "copyReply",
+      label: t("comments.copyReply"),
+      icon: markRaw(IconLucideCopy),
+      separator: items.length > 0,
+    });
+  }
+  if (contextCommentText.value) {
+    items.push({
+      key: "copyComment",
+      label: t("comments.copyComment"),
+      icon: markRaw(IconLucideCopy),
+      separator: items.length > 0 && !contextReplyText.value,
+    });
+  }
+  return items;
+});
+
+/**
+ * 右键命中评论 / 回复 / 文本选区时记录可复制内容
+ * @param event - 鼠标右键事件
+ */
+const onCommentsContextMenu = (event: MouseEvent): void => {
+  const rawSelection = window.getSelection()?.toString() ?? "";
+  selectedText.value = rawSelection.trim().length > 0 ? rawSelection : "";
+
+  const target = event.target as HTMLElement | null;
+  const commentId = target?.closest<HTMLElement>("[data-comment-id]")?.dataset.commentId;
+  const replyId = target?.closest<HTMLElement>("[data-reply-id]")?.dataset.replyId;
+  const targetComment = commentId ? props.items.find((item) => item.id === commentId) : null;
+  const targetReply =
+    replyId && targetComment?.reply ? targetComment.reply.find((r) => r.id === replyId) : null;
+
+  contextCommentText.value = targetComment?.text ?? "";
+  contextReplyText.value = targetReply?.text ?? "";
+
+  if (!selectedText.value && !contextCommentText.value && !contextReplyText.value) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+};
+
+/**
+ * 执行右键菜单复制
+ * @param key - 菜单项标识
+ */
+const onContextMenuSelect = async (key: string): Promise<void> => {
+  if (key === "copySelection") await copy(selectedText.value);
+  else if (key === "copyReply") await copy(contextReplyText.value);
+  else if (key === "copyComment") await copy(contextCommentText.value);
+};
 const itemElements = new Map<string, HTMLElement>();
 const positions = reactive(new Map<string, { x: number; y: number }>());
 const columnWidth = ref(0);
@@ -153,25 +221,32 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="rootRef" class="relative w-full" :style="{ height: `${containerHeight}px` }">
+  <SContextMenu :items="contextMenuItems" @select="onContextMenuSelect">
     <div
-      v-for="item in items"
-      :key="item.id"
-      :ref="(value) => setItemRef(item.id, value)"
-      class="absolute"
-      :style="{
-        left: `${positions.get(item.id)?.x ?? 0}px`,
-        top: `${positions.get(item.id)?.y ?? 0}px`,
-        width: `${columnWidth}px`,
-        visibility: positions.has(item.id) ? 'visible' : 'hidden',
-      }"
+      ref="rootRef"
+      class="relative w-full"
+      :style="{ height: `${containerHeight}px` }"
+      @contextmenu.capture="onCommentsContextMenu"
     >
-      <CommentCard
-        :item="item"
-        :creator="creatorIds.has(item.id)"
-        :density="density"
-        :cover="cover"
-      />
+      <div
+        v-for="item in items"
+        :key="item.id"
+        :ref="(value) => setItemRef(item.id, value)"
+        class="absolute"
+        :style="{
+          left: `${positions.get(item.id)?.x ?? 0}px`,
+          top: `${positions.get(item.id)?.y ?? 0}px`,
+          width: `${columnWidth}px`,
+          visibility: positions.has(item.id) ? 'visible' : 'hidden',
+        }"
+      >
+        <CommentCard
+          :item="item"
+          :creator="creatorIds.has(item.id)"
+          :density="density"
+          :cover="cover"
+        />
+      </div>
     </div>
-  </div>
+  </SContextMenu>
 </template>
