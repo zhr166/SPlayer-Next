@@ -2,6 +2,7 @@
 import { useStatusStore } from "@/stores/status";
 import { useMediaStore } from "@/stores/media";
 import { useFullPlayer } from "../../context";
+import PlayerComments from "../../shared/PlayerComments.vue";
 import "./amllMediaButton.css";
 
 const status = useStatusStore();
@@ -18,6 +19,14 @@ const centeredWithoutQueue = computed(() => !showLyric.value || !hasLyric.value)
 const infoCentered = computed(() => !status.fullQueueOpen && centeredWithoutQueue.value);
 
 const lyricVisible = computed(() => showLyric.value && hasLyric.value && !status.fullQueueOpen);
+
+const hasTrack = computed(() => !!media.track);
+
+/** 全屏内嵌评论布局：off 关闭、half 左半屏、full 全屏 */
+const commentsMode = computed<"off" | "half" | "full">(() => {
+  if (!status.fullCommentsOpen) return "off";
+  return media.parsedLyric.length > 0 && showLyric.value ? "half" : "full";
+});
 
 /** 歌词面板正在过渡：只有这段时间才给合成层提示，空闲时保持可混合 */
 const lyricTransitioning = ref(false);
@@ -60,7 +69,8 @@ const toggleQueue = (): void => {
   <div class="absolute top-14 inset-x-0 bottom-16">
     <!-- 左侧封面与控制 -->
     <div
-      class="absolute inset-y-0 left-0 w-[45%] flex items-center justify-center transition-transform duration-500 ease-[cubic-bezier(0.5,0,0.5,1)]"
+      class="absolute inset-y-0 left-0 w-[45%] flex items-center justify-center transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.5,0,0.5,1)]"
+      :class="status.fullCommentsOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'"
       :style="{ transform: infoCentered ? 'translateX(calc(50vw - 50%))' : undefined }"
     >
       <div class="w-[min(50vh,38vw)] flex flex-col items-center gap-[4vh]">
@@ -75,13 +85,15 @@ const toggleQueue = (): void => {
     <div
       class="group absolute inset-y-0 right-0 w-[55%] pr-20 flex flex-col transition-opacity duration-500 ease-[cubic-bezier(0.5,0,0.5,1)]"
       :class="[
-        lyricVisible ? 'opacity-100' : 'opacity-0 pointer-events-none',
+        lyricVisible && commentsMode !== 'full' ? 'opacity-100' : 'opacity-0 pointer-events-none',
         lyricTransitioning && '[will-change:opacity]',
       ]"
     >
       <PlayerLyric :visible="lyricVisible" />
       <LyricActions />
     </div>
+    <!-- 全屏内嵌评论：AM 布局与经典模式一致 -->
+    <PlayerComments :mode="commentsMode === 'full' ? 'full' : 'half'" width="45%" />
     <!-- 播放队列 -->
     <div
       class="absolute inset-y-0 right-0 w-[55%] pl-4 py-6 flex items-center"
@@ -107,6 +119,16 @@ const toggleQueue = (): void => {
     @mouseenter="onBarEnter"
     @mouseleave="onBarLeave"
   >
+    <SButton
+      type="cover"
+      :variant="status.fullCommentsOpen ? 'tertiary' : 'text'"
+      size="auto"
+      class="opacity-45 hover:opacity-80"
+      :disabled="!hasTrack"
+      @click="status.toggleFullComments"
+    >
+      <IconLucideMessageCircle class="size-9" />
+    </SButton>
     <SButton
       type="cover"
       variant="text"
