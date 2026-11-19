@@ -336,7 +336,7 @@ onBeforeUnmount(() => {
         :crossfade="false"
         :class="[
           fullscreenActive
-            ? 'absolute! left-1/2! top-1/2! w-[84%]! aspect-square! -translate-x-1/2 -translate-y-1/2 rounded-xl shadow-2xl'
+            ? 'absolute! left-1/2! top-1/2! w-[62%]! aspect-square! -translate-x-1/2 -translate-y-1/2 rounded-xl shadow-2xl'
             : 'absolute! inset-0 size-full',
           transitioning && '[will-change:opacity]',
         ]"
@@ -358,50 +358,14 @@ onBeforeUnmount(() => {
           fullscreenActive
             ? {
                 maskImage:
-                  'linear-gradient(to right, transparent 0%, #000 5%, #000 86%, transparent 100%)',
+                  'linear-gradient(to right, transparent 0%, #000 7%, #000 72%, transparent 100%)',
                 WebkitMaskImage:
-                  'linear-gradient(to right, transparent 0%, #000 5%, #000 86%, transparent 100%)',
+                  'linear-gradient(to right, transparent 0%, #000 7%, #000 72%, transparent 100%)',
               }
             : null,
         ]"
         @loadeddata="onVideoReady"
       />
     </Transition>
-    <!-- 全屏动态封面左右边缘高斯模糊，向歌词区柔和过渡 -->
-    <div v-if="fullscreenActive" class="motion-edge-blur" aria-hidden="true">
-      <span class="motion-edge-blur-left" />
-      <span class="motion-edge-blur-right" />
-    </div>
   </div>
 </template>
-
-<style scoped>
-.motion-edge-blur {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  pointer-events: none;
-}
-
-.motion-edge-blur span {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-}
-
-.motion-edge-blur-left {
-  left: 0;
-  width: 12%;
-  mask-image: linear-gradient(to right, #000 0%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, #000 0%, transparent 100%);
-}
-
-.motion-edge-blur-right {
-  right: 0;
-  width: 24%;
-  mask-image: linear-gradient(to left, #000 0%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to left, #000 0%, transparent 100%);
-}
-</style>

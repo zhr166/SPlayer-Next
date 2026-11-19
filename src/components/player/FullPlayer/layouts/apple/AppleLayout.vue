@@ -72,7 +72,7 @@ const toggleQueue = (): void => {
           class="[transition:transform_500ms_cubic-bezier(0.34,1.56,0.64,1),box-shadow_500ms_ease-out]"
           :class="[
             motionActive
-              ? 'absolute! inset-0 z-0 !w-auto !h-auto !aspect-auto !rounded-none !shadow-none'
+              ? 'absolute! left-0! top-0! z-0 h-full! w-[133%]! !aspect-auto !rounded-none !shadow-none'
               : 'relative w-full aspect-square rounded-xl shadow-[0_16px_40px_rgba(0,0,0,0.3)]',
             !motionActive && (isPlaying ? 'scale-100' : 'scale-90'),
           ]"
