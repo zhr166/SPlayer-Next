@@ -19,6 +19,9 @@ const infoCentered = computed(() => !status.fullQueueOpen && centeredWithoutQueu
 
 const lyricVisible = computed(() => showLyric.value && hasLyric.value && !status.fullQueueOpen);
 
+/** 动态封面铺满左侧整列，静态封面保持居中圆角方块 */
+const motionActive = ref(false);
+
 /** 歌词面板正在过渡：只有这段时间才给合成层提示，空闲时保持可混合 */
 const lyricTransitioning = ref(false);
 let lyricTransitionTimer: ReturnType<typeof setTimeout> | undefined;
@@ -53,6 +56,10 @@ const toggleQueue = (): void => {
 
 <template>
   <PlayerTopBar />
+  <!-- 收起把手：与主分支一致，窗口顶部居中 -->
+  <div class="app-no-drag absolute top-4 left-1/2 -translate-x-1/2 z-20">
+    <AppleThumb />
+  </div>
   <div class="absolute top-14 inset-x-0 bottom-16">
     <!-- 左侧封面与控制 -->
     <div
@@ -60,13 +67,20 @@ const toggleQueue = (): void => {
       :style="{ transform: infoCentered ? 'translateX(calc(50vw - 50%))' : undefined }"
     >
       <div class="w-[min(50vh,38vw)] flex flex-col items-center gap-[4vh]">
-        <!-- 妙控条：独立一行、居中、随封面列平移 -->
-        <AppleThumb />
         <PlayerCover
-          class="w-full aspect-square rounded-xl shadow-[0_16px_40px_rgba(0,0,0,0.3)] [transition:transform_500ms_cubic-bezier(0.34,1.56,0.64,1),box-shadow_500ms_ease-out]"
-          :class="isPlaying ? 'scale-100' : 'scale-90'"
+          fullscreen-motion
+          class="[transition:transform_500ms_cubic-bezier(0.34,1.56,0.64,1),box-shadow_500ms_ease-out]"
+          :class="[
+            motionActive
+              ? 'absolute! inset-0 z-0 !w-auto !h-auto !aspect-auto !rounded-none !shadow-none'
+              : 'relative w-full aspect-square rounded-xl shadow-[0_16px_40px_rgba(0,0,0,0.3)]',
+            !motionActive && (isPlaying ? 'scale-100' : 'scale-90'),
+          ]"
+          @motion-state="motionActive = $event"
         />
-        <AppleControls />
+        <!-- 动态封面铺满时占位，避免控件位置跳动 -->
+        <div v-if="motionActive" class="w-full aspect-square" aria-hidden="true" />
+        <AppleControls class="relative z-10" />
       </div>
     </div>
     <!-- 右侧歌词 -->

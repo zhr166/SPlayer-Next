@@ -12,8 +12,8 @@ import { setPlayerExpanded } from "@/services/playerTransition";
 
 const { t } = useI18n();
 
-/** 静止偏移：把 50×8 药丸平移到原点中心（AMLL 同值） */
-const REST_OFFSET = { x: -25, y: -4 };
+/** 静止偏移：把 56×4.8 药丸平移到原点中心（尺寸对齐主分支） */
+const REST_OFFSET = { x: -28, y: -2.4 };
 /** 跟随边界：光标位置折半后与原点的距离上限（AMLL 同值） */
 const FOLLOW_BOUND = 25;
 /** 弹簧参数：换算自 framer-motion duration 0.5（AMLL 同配置） */
@@ -190,14 +190,14 @@ onBeforeUnmount(() => {
   position: absolute;
   left: 50px;
   top: 50px;
-  width: 50px;
-  height: 8px;
+  width: 56px;
+  height: 4.8px;
   padding: 0;
   border: none;
-  border-radius: 4px;
+  border-radius: 9999px;
   background: rgb(var(--s-cover) / 0.18);
   cursor: none;
-  transform: translate(-25px, -4px);
+  transform: translate(-28px, -2.4px);
   transition:
     width 0.5s cubic-bezier(0.34, 1.3, 0.64, 1),
     height 0.5s cubic-bezier(0.34, 1.3, 0.64, 1);
@@ -208,6 +208,7 @@ onBeforeUnmount(() => {
 .apple-thumb-btn:focus-visible {
   width: 25px;
   height: 25px;
+  border-radius: 6px;
 }
 
 .apple-thumb-bar {
