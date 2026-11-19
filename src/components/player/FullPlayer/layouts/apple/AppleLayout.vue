@@ -63,29 +63,38 @@ const toggleQueue = (): void => {
   <div class="absolute top-14 inset-x-0 bottom-16">
     <!-- 左侧封面与控制 -->
     <div
-      class="absolute inset-y-0 left-0 w-[45%] flex items-center justify-center transition-transform duration-500 ease-[cubic-bezier(0.5,0,0.5,1)]"
-      :style="{ transform: infoCentered ? 'translateX(calc(50vw - 50%))' : undefined }"
+      class="absolute inset-y-0 left-0 flex transition-[width,transform] duration-500 ease-[cubic-bezier(0.5,0,0.5,1)]"
+      :class="
+        motionActive
+          ? 'w-[52%] items-start pl-[2.5vw] pt-[1vh]'
+          : 'w-[45%] items-center justify-center'
+      "
+      :style="{
+        transform: !motionActive && infoCentered ? 'translateX(calc(50vw - 50%))' : undefined,
+      }"
     >
-      <div class="w-[min(50vh,38vw)] flex flex-col items-center gap-[4vh]">
+      <div
+        class="flex flex-col"
+        :class="motionActive ? 'w-full gap-[2.6vh]' : 'w-[min(50vh,38vw)] items-center gap-[4vh]'"
+      >
         <PlayerCover
           fullscreen-motion
           class="[transition:transform_500ms_cubic-bezier(0.34,1.56,0.64,1),box-shadow_500ms_ease-out]"
           :class="[
             motionActive
-              ? 'absolute! left-0! top-0! z-0 h-full! w-[133%]! !aspect-auto !rounded-none !shadow-none'
+              ? 'relative w-full h-[68vh] !aspect-auto !rounded-none !shadow-none'
               : 'relative w-full aspect-square rounded-xl shadow-[0_16px_40px_rgba(0,0,0,0.3)]',
             !motionActive && (isPlaying ? 'scale-100' : 'scale-90'),
           ]"
           @motion-state="motionActive = $event"
         />
-        <!-- 动态封面铺满时占位，避免控件位置跳动 -->
-        <div v-if="motionActive" class="w-full aspect-square" aria-hidden="true" />
         <AppleControls class="relative z-10" />
       </div>
     </div>
     <!-- 右侧歌词 -->
     <div
-      class="group absolute inset-y-0 right-0 w-[55%] pr-20 flex flex-col transition-opacity duration-500 ease-[cubic-bezier(0.5,0,0.5,1)]"
+      class="group absolute inset-y-0 right-0 pr-20 flex flex-col transition-[width,opacity] duration-500 ease-[cubic-bezier(0.5,0,0.5,1)]"
+      :style="{ width: motionActive ? '45%' : '55%' }"
       :class="[
         lyricVisible ? 'opacity-100' : 'opacity-0 pointer-events-none',
         lyricTransitioning && '[will-change:opacity]',

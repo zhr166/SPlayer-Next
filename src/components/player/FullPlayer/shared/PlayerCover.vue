@@ -358,9 +358,11 @@ onBeforeUnmount(() => {
           fullscreenActive
             ? {
                 maskImage:
-                  'linear-gradient(to right, transparent 0%, #000 7%, #000 72%, transparent 100%)',
+                  'linear-gradient(to right, transparent 0%, #000 8%, #000 68%, transparent 100%), linear-gradient(to bottom, #000 0%, #000 84%, transparent 100%)',
                 WebkitMaskImage:
-                  'linear-gradient(to right, transparent 0%, #000 7%, #000 72%, transparent 100%)',
+                  'linear-gradient(to right, transparent 0%, #000 8%, #000 68%, transparent 100%), linear-gradient(to bottom, #000 0%, #000 84%, transparent 100%)',
+                maskComposite: 'intersect',
+                WebkitMaskComposite: 'source-in',
               }
             : null,
         ]"
