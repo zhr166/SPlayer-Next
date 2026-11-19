@@ -147,6 +147,10 @@ export const defaultSystemConfig: SystemConfig = {
     nowPlaying: true,
     loveSync: true,
   },
+  comments: {
+    creatorEnabled: false,
+    density: "standard",
+  },
   externalApi: {
     enabled: false,
     wsEnabled: false,
