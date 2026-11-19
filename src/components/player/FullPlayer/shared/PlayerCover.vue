@@ -334,12 +334,8 @@ onBeforeUnmount(() => {
         :src="layer.src"
         :fallback="layer.fallback"
         :crossfade="false"
-        :class="[
-          fullscreenActive
-            ? 'absolute! left-1/2! top-1/2! w-[62%]! aspect-square! -translate-x-1/2 -translate-y-1/2 rounded-xl shadow-2xl'
-            : 'absolute! inset-0 size-full',
-          transitioning && '[will-change:opacity]',
-        ]"
+        class="absolute! inset-0 size-full"
+        :class="transitioning && '[will-change:opacity]'"
       />
     </TransitionGroup>
     <!-- 动态封面 -->
