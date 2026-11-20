@@ -425,6 +425,116 @@ export const useSettingsStore = defineStore(
           player: PlayerSettings;
           preset: PresetSettings;
         };
+        const legacyLyric = lyric as LyricSettings & { cjkTransform?: string };
+        const legacyPreferenceMap: Record<string, ChineseScriptPreference> = {
+          none: "default",
+          t2s: "simplified",
+          tw2s: "simplified",
+          hk2s: "simplified",
+          tw2sp: "simplified",
+          s2t: "traditional",
+          s2tw: "traditional",
+          s2hk: "traditional",
+          s2twp: "traditional",
+        };
+        if (legacyLyric.cjkTransform) {
+          lyric.chineseScriptPreference =
+            legacyPreferenceMap[legacyLyric.cjkTransform] ?? "default";
+          delete legacyLyric.cjkTransform;
+        }
+        if (player.transitionMode !== "crossfade" && player.transitionMode !== "automix")
+          player.transitionMode = "none";
+        if (
+          !(["default", "simplified", "traditional"] as const).includes(
+            lyric.chineseScriptPreference,
+          )
+        ) {
+          lyric.chineseScriptPreference = "default";
+        }
+        if (typeof player.automixCrossfadeFallback !== "boolean")
+          player.automixCrossfadeFallback = true;
+        // 流体背景渲染器只保留 mesh / pixi，旧配置回退到 mesh
+        if (player.playerBgRenderer !== "mesh" && player.playerBgRenderer !== "pixi") {
+          player.playerBgRenderer = "mesh";
+        }
+        if (typeof lyric.detectBackgroundLyrics !== "boolean") {
+          lyric.detectBackgroundLyrics = true;
+        }
+        if (typeof lyric.llmTranslation !== "boolean") lyric.llmTranslation = false;
+        if (!(["off", "llm", "dictionary"] as const).includes(lyric.pronunciationOptimization)) {
+          lyric.pronunciationOptimization = "off";
+        }
+        if (!Array.isArray(preset.skipTrackKeywords)) {
+          preset.skipTrackKeywords = [...DEFAULT_SKIP_TRACK_KEYWORDS];
+        }
+        if (typeof lyric.fallbackTranslation !== "boolean") {
+          lyric.fallbackTranslation = true;
+        }
+        if (typeof lyric.swapTranslationPronunciation !== "boolean") {
+          lyric.swapTranslationPronunciation = false;
+        }
+        if (!(["lyrics", "pronunciation"] as const).includes(lyric.largerLyricText)) {
+          lyric.largerLyricText = "lyrics";
+        }
+        if (typeof lyric.forceSyllableSpacing !== "boolean") {
+          lyric.forceSyllableSpacing = false;
+        }
+        if (typeof lyric.forceLinePronunciationAsMain !== "boolean") {
+          lyric.forceLinePronunciationAsMain = false;
+        }
+        if (typeof lyric.hideChinesePronunciation !== "boolean") {
+          lyric.hideChinesePronunciation = false;
+        }
+        if (typeof lyric.independentWordRomanizationProgress !== "boolean") {
+          lyric.independentWordRomanizationProgress = false;
+        }
+        if (typeof lyric.normalizeNonStandardHan !== "boolean") {
+          lyric.normalizeNonStandardHan = true;
+        }
+        if (typeof lyric.pauseClearBlur !== "boolean") {
+          lyric.pauseClearBlur = false;
+        }
+        if (typeof lyric.disableCjkEmphasis !== "boolean") {
+          lyric.disableCjkEmphasis = false;
+        }
+        if (typeof lyric.raiseAlignPositionOnOverlap !== "boolean") {
+          lyric.raiseAlignPositionOnOverlap = false;
+        }
+        // 旧的 0.35 走 top 锚点，换行时几乎不动；迁到 0.5 以启用 center 锚点
+        if (lyric.alignPosition === 0.35) {
+          lyric.alignPosition = 0.5;
+        }
+        // 旧的默认弹簧（0.9/15/90）太硬，迁到官方 lyric-dom 的过阻尼参数
+        if (
+          lyric.springPreset === "default" &&
+          lyric.springMass === 0.9 &&
+          lyric.springDamping === 15 &&
+          lyric.springStiffness === 90
+        ) {
+          lyric.springMass = SPRING_PRESETS.default.mass;
+          lyric.springDamping = SPRING_PRESETS.default.damping;
+          lyric.springStiffness = SPRING_PRESETS.default.stiffness;
+        }
+        // AMLL 垂直弹簧同样从 1/15/100 迁到过阻尼参数
+        if (
+          lyric.amllVerticalSpringMass === 1 &&
+          lyric.amllVerticalSpringDamping === 15 &&
+          lyric.amllVerticalSpringStiffness === 100 &&
+          lyric.amllVerticalSpringSoft === false
+        ) {
+          lyric.amllVerticalSpringDamping = 20;
+          lyric.amllVerticalSpringStiffness = 50;
+        }
+        if (typeof store.appearance.sidebarShortcutToggle !== "boolean") {
+          store.appearance.sidebarShortcutToggle = false;
+        }
+        if (
+          !(["low", "medium", "high", "very-high", "extreme"] as const).includes(
+            lyric.floatAnimationIntensity,
+          )
+        ) {
+          lyric.floatAnimationIntensity = "medium";
+        }
         // 旧存档的 showExplicitTag 迁移为 hideExplicitTag；afterHydrate 早于持久化订阅注册，
         // 需手动写回一次，否则旧键留在存档中且每次启动重复迁移
         const legacyPreset = preset as unknown as { showExplicitTag?: unknown };
