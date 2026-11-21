@@ -41,6 +41,10 @@ const staticResults = shallowRef<StaticCoverSearchCandidate[]>([]);
 
 const currentTrack = computed<Track | null>(() => manager.track.value ?? media.track ?? null);
 
+/** 异步操作返回后确认仍是同一首曲目，避免切歌后把旧封面写回新曲目 */
+const isSameTrack = (track: Track): boolean =>
+  `${media.track?.source}:${media.track?.id}` === `${track.source}:${track.id}`;
+
 const source = ref<MotionCoverSearchSource>("ncm");
 const storefront = ref(settings.player.appleMusicStorefront || "us");
 const searchKeyword = ref("");
@@ -200,6 +204,7 @@ const applyCandidate = async (candidate: MotionCoverSearchCandidate): Promise<vo
   applyingId.value = candidate.id;
   try {
     manual.value = await window.api.motionCover.applyManual(toRaw(track), candidate);
+    if (!isSameTrack(track)) return;
     // 静态封面优先级更高，已有手动静态图时只在无静态记录时更新取色
     if (!staticManual.value && candidate.cover) {
       media.track = { ...toRaw(track), cover: candidate.cover, coverOriginal: candidate.cover };
@@ -232,8 +237,10 @@ const applyCandidate = async (candidate: MotionCoverSearchCandidate): Promise<vo
           ? cover
           : `${cover}?param=1200y1200`,
     };
+    if (!isSameTrack(track)) return;
     try {
       const record = await window.api.motionCover.applyStatic(toRaw(track), staticCandidate);
+      if (!isSameTrack(track)) return;
       staticManual.value = record;
       media.track = { ...toRaw(track), cover: record.thumbUrl, coverOriginal: record.url };
       extractColorFromUrl(record.url);
@@ -271,6 +278,7 @@ const applyStaticCandidate = async (candidate: StaticCoverSearchCandidate): Prom
   }
   try {
     const record = await window.api.motionCover.applyStatic(toRaw(track), candidate);
+    if (!isSameTrack(track)) return;
     staticManual.value = record;
     media.track = { ...toRaw(track), cover: record.thumbUrl, coverOriginal: record.url };
     extractColorFromUrl(record.url);
@@ -287,6 +295,7 @@ const restoreStaticOriginal = async (): Promise<void> => {
   const record = staticManual.value;
   try {
     await window.api.motionCover.clearStatic(track);
+    if (!isSameTrack(track)) return;
     staticManual.value = null;
     // 回退优先级：手动动态封面的静态图 > 应用静态图前的原始封面
     if (manual.value?.cover) {
@@ -318,6 +327,7 @@ const restoreAuto = async (): Promise<void> => {
   if (!track) return;
   try {
     await window.api.motionCover.clearManual(track);
+    if (!isSameTrack(track)) return;
     const record = manual.value;
     manual.value = null;
     // 静态封面优先级更高：有手动静态图时保持它，否则回退动态记录应用前的原始封面
