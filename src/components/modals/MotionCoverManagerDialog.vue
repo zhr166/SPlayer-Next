@@ -200,7 +200,8 @@ const applyCandidate = async (candidate: MotionCoverSearchCandidate): Promise<vo
   applyingId.value = candidate.id;
   try {
     manual.value = await window.api.motionCover.applyManual(toRaw(track), candidate);
-    if (candidate.cover) {
+    // 静态封面优先级更高，已有手动静态图时只在无静态记录时更新取色
+    if (!staticManual.value && candidate.cover) {
       media.track = { ...toRaw(track), cover: candidate.cover, coverOriginal: candidate.cover };
       extractColorFromUrl(candidate.cover);
     }
@@ -254,14 +255,24 @@ const restoreStaticOriginal = async (): Promise<void> => {
   try {
     await window.api.motionCover.clearStatic(track);
     staticManual.value = null;
-    media.track = {
-      ...toRaw(track),
-      cover: record?.originalCover ?? track.cover,
-      coverOriginal: record?.originalCoverOriginal ?? track.coverOriginal,
-    };
-    extractColorFromUrl(
-      record?.originalCoverOriginal ?? record?.originalCover ?? track.cover ?? null,
-    );
+    // 回退优先级：手动动态封面的静态图 > 应用静态图前的原始封面
+    if (manual.value?.cover) {
+      media.track = {
+        ...toRaw(track),
+        cover: manual.value.cover,
+        coverOriginal: manual.value.cover,
+      };
+      extractColorFromUrl(manual.value.cover);
+    } else {
+      media.track = {
+        ...toRaw(track),
+        cover: record?.originalCover ?? track.cover,
+        coverOriginal: record?.originalCoverOriginal ?? track.coverOriginal,
+      };
+      extractColorFromUrl(
+        record?.originalCoverOriginal ?? record?.originalCover ?? track.cover ?? null,
+      );
+    }
     toast.success(t("motionCoverManager.clearManualDone"));
   } catch {
     toast.error(t("motionCoverManager.applyFailed"));
@@ -276,7 +287,15 @@ const restoreAuto = async (): Promise<void> => {
     await window.api.motionCover.clearManual(track);
     const record = manual.value;
     manual.value = null;
-    if (record) {
+    // 静态封面优先级更高：有手动静态图时保持它，否则回退动态记录应用前的原始封面
+    if (staticManual.value) {
+      media.track = {
+        ...toRaw(track),
+        cover: staticManual.value.thumbUrl,
+        coverOriginal: staticManual.value.url,
+      };
+      extractColorFromUrl(staticManual.value.url);
+    } else if (record) {
       media.track = {
         ...toRaw(track),
         cover: record.originalCover ?? track.cover,
