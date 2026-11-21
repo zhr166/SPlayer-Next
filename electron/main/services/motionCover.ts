@@ -38,6 +38,9 @@ import type {
   Track,
 } from "@shared/types/player";
 
+/** 手动解析动态封面时依次尝试的主要区 */
+const AM_VIDEO_STOREFRONTS = ["us", "gb", "hk", "tw", "jp", "sg", "ca"];
+
 /** 假名：日文曲目的判定依据 */
 const KANA_RE = /[\p{Script=Hiragana}\p{Script=Katakana}\u30FC\uFF66-\uFF9F]/u;
 /** 谚文：韩文曲目的判定依据 */
@@ -912,12 +915,19 @@ export const resolveMotionCoverCandidate = async (
   }
   if (!candidate.collectionId || !candidate.storefront) return null;
   const controller = new AbortController();
-  const info = await fetchAlbumInfo(
-    candidate.collectionId,
-    candidate.storefront,
-    controller.signal,
-  );
-  return info.video;
+  // 同一专辑在部分区没有动态封面，按主要区依次回退
+  const tried = new Set<string>();
+  for (const storefront of [candidate.storefront, ...AM_VIDEO_STOREFRONTS]) {
+    if (tried.has(storefront)) continue;
+    tried.add(storefront);
+    try {
+      const info = await fetchAlbumInfo(candidate.collectionId, storefront, controller.signal);
+      if (info.video) return info.video;
+    } catch (err) {
+      if ((err as Error).name === "AbortError") throw err;
+    }
+  }
+  return null;
 };
 
 /**
