@@ -26,7 +26,7 @@ watch(
         cover: staticRecord.thumbUrl,
         coverOriginal: staticRecord.url,
       };
-      extractColorFromUrl(staticRecord.url);
+      extractColorFromUrl(staticRecord.thumbUrl);
     } else if (motionRecord?.cover) {
       media.track = {
         ...toRaw(track),

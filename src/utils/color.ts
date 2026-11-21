@@ -194,7 +194,22 @@ export const extractColorFromUrl = (url: string | null): void => {
     return;
   }
   if (/^https?:\/\//i.test(url)) {
-    void loadColorFromRemote(url, token);
+    // 封面 CDN 通常允许跨域，优先在渲染进程直接解码，省掉主进程转发
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      if (token !== coverColorToken || !useSettingsStore().player.followCoverColor) return;
+      try {
+        themeStore.coverColor = extractColorFromImageElement(img);
+      } catch {
+        void loadColorFromRemote(url, token);
+      }
+    };
+    img.onerror = () => {
+      if (token !== coverColorToken) return;
+      void loadColorFromRemote(url, token);
+    };
+    img.src = url;
     return;
   }
   const img = new Image();

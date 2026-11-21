@@ -249,7 +249,7 @@ const applyCandidate = async (candidate: MotionCoverSearchCandidate): Promise<vo
       staticManual.value = record;
       media.track = { ...toRaw(track), cover: record.thumbUrl, coverOriginal: record.url };
       history.patchCover(toRaw(track), record.thumbUrl, record.url);
-      extractColorFromUrl(record.url);
+      extractColorFromUrl(record.thumbUrl);
       toast.success(t("motionCoverManager.fallbackStatic"));
     } catch {
       toast.error(t("motionCoverManager.applyFailed"));
@@ -288,7 +288,7 @@ const applyStaticCandidate = async (candidate: StaticCoverSearchCandidate): Prom
     staticManual.value = record;
     media.track = { ...toRaw(track), cover: record.thumbUrl, coverOriginal: record.url };
     history.patchCover(toRaw(track), record.thumbUrl, record.url);
-    extractColorFromUrl(record.url);
+    extractColorFromUrl(record.thumbUrl);
     toast.success(t("motionCoverManager.applied"));
   } catch {
     toast.error(t("motionCoverManager.applyFailed"));
@@ -357,9 +357,7 @@ const restoreAuto = async (): Promise<void> => {
         record.originalCover ?? track.cover,
         record.originalCoverOriginal ?? track.coverOriginal,
       );
-      extractColorFromUrl(
-        record.originalCoverOriginal ?? record.originalCover ?? track.cover ?? null,
-      );
+      extractColorFromUrl(record.originalCover ?? track.cover ?? null);
     }
     toast.success(t("motionCoverManager.clearManualDone"));
   } catch {
