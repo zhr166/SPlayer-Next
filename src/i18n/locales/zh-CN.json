@@ -1034,7 +1034,8 @@
     "staticManualActive": "已手动指定静态封面",
     "restoreOriginal": "恢复原版",
     "staticEmpty": "搜索并选择一张静态封面",
-    "fallbackStatic": "该版本没有动态封面，已改为应用静态封面"
+    "fallbackStatic": "该版本没有动态封面，已改为应用静态封面",
+    "applyStatic": "设为静态"
   },
   "settings": {
     "title": "设置",

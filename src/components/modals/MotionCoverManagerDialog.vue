@@ -280,6 +280,38 @@ const applyCachedCover = async (record: MotionCoverCacheRecord): Promise<void> =
   }
 };
 
+const useCachedAsStatic = async (record: MotionCoverCacheRecord): Promise<void> => {
+  const track = currentTrack.value;
+  const cover = record.track?.cover;
+  if (!track || !cover) {
+    toast.error(t("motionCoverManager.noTrack"));
+    return;
+  }
+  try {
+    const entry = await window.api.motionCover.applyStatic(toRaw(track), {
+      id: record.fingerprint,
+      source: record.fingerprint.startsWith("ncm|") ? "ncm" : "am",
+      title: record.track?.title ?? "",
+      artist: (record.track?.artists ?? []).map((artist) => artist.name).join(" / "),
+      album: record.track?.album?.name,
+      cover,
+      coverLarge: record.track?.coverOriginal ?? cover,
+    });
+    staticManual.value = entry;
+    media.track = {
+      ...toRaw(track),
+      cover: entry.thumbUrl,
+      coverOriginal: entry.url,
+    };
+    history.patchCover(toRaw(track), entry.thumbUrl, entry.url);
+    extractColorFromUrl(entry.thumbUrl);
+    bumpMotionCoverRevision();
+    toast.success(t("motionCoverManager.applied"));
+  } catch {
+    toast.error(t("motionCoverManager.applyFailed"));
+  }
+};
+
 const runStaticSearch = async (): Promise<void> => {
   const term = staticKeyword.value.trim();
   if (!term) return;
@@ -550,6 +582,15 @@ watch(open, (value) => {
             @click="applyCachedCover(record)"
           >
             {{ t("motionCoverManager.apply") }}
+          </SButton>
+          <SButton
+            v-if="record.track?.cover"
+            variant="ghost"
+            size="small"
+            :disabled="!currentTrack"
+            @click="useCachedAsStatic(record)"
+          >
+            {{ t("motionCoverManager.applyStatic") }}
           </SButton>
           <SButton
             v-if="record.videoUrl"

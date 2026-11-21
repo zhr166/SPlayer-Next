@@ -1034,7 +1034,8 @@
     "staticManualActive": "Manual static cover",
     "restoreOriginal": "Restore original",
     "staticEmpty": "Search and pick a static cover",
-    "fallbackStatic": "This version has no animated cover; applied as a static cover"
+    "fallbackStatic": "This version has no animated cover; applied as a static cover",
+    "applyStatic": "Use as static"
   },
   "settings": {
     "title": "Settings",
