@@ -8,8 +8,11 @@ import { useStatusStore } from "@/stores/status";
 import { useSettingsStore } from "@/stores/settings";
 import * as queueStore from "@/stores/queue";
 import * as player from "@/core/player";
+import { useMotionCoverRevision } from "@/composables/useMotionCoverRevision";
 
 const media = useMediaStore();
+const motionRevision = useMotionCoverRevision();
+let lastMotionRevision = motionRevision.value;
 const status = useStatusStore();
 const settings = useSettingsStore();
 
@@ -181,9 +184,16 @@ watch(
       status.isPlayerExpanded && !status.trackLoading,
       settings.player.motionCoverSource,
       displayTrack.value?.id,
+      motionRevision.value,
     ] as const,
-  async ([active, source, id]) => {
+  async ([active, source, id, revision]) => {
     const key = `${source}:${id}`;
+    if (revision !== lastMotionRevision) {
+      lastMotionRevision = revision;
+      if (motionClearTimer) clearTimeout(motionClearTimer);
+      motion.value = null;
+      motionReady.value = false;
+    }
     if (motion.value && motion.value.key !== key) {
       const manual = player.isManualSwitchRecent();
       if (manual) {

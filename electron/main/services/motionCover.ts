@@ -25,6 +25,7 @@ import { callNetease } from "@main/apis/netease";
 import { buildFingerprint } from "@main/database/lyricMatchCache";
 import { getMotionCoverRecord, setMotionCoverRecord } from "@main/database/motionCoverCache";
 import { getManualMotionCover, setManualMotionCover } from "@main/database/motionCoverManual";
+import { getStaticCoverManual } from "@main/database/staticCoverManual";
 import { store } from "@main/store";
 import { getMotionCoverCacheDir } from "@main/utils/config";
 import { convertTexts } from "@main/services/opencc";
@@ -1076,6 +1077,9 @@ export const resolveMotionCover = async (
   track: Track,
   source: MotionCoverSource,
 ): Promise<string | null> => {
+  // 手动静态封面视为切回静态，直接压住动态封面
+  if (getStaticCoverManual(track)) return null;
+
   // 手动指定的封面优先于自动匹配和来源开关
   const manual = getManualMotionCover(track);
   if (manual) {

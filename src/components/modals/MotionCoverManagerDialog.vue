@@ -17,6 +17,7 @@ import { useStatusStore } from "@/stores/status";
 import { useSettingsStore } from "@/stores/settings";
 import { useHistoryStore } from "@/stores/history";
 import { extractColorFromUrl } from "@/utils/color";
+import { bumpMotionCoverRevision } from "@/composables/useMotionCoverRevision";
 
 const { t } = useI18n();
 const { copy } = useCopyText();
@@ -215,6 +216,7 @@ const applyCandidate = async (candidate: MotionCoverSearchCandidate): Promise<vo
       history.patchCover(toRaw(track), candidate.cover, candidate.cover);
       extractColorFromUrl(candidate.cover);
     }
+    bumpMotionCoverRevision();
     toast.success(t("motionCoverManager.applied"));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -250,6 +252,7 @@ const applyCandidate = async (candidate: MotionCoverSearchCandidate): Promise<vo
       media.track = { ...toRaw(track), cover: record.thumbUrl, coverOriginal: record.url };
       history.patchCover(toRaw(track), record.thumbUrl, record.url);
       extractColorFromUrl(record.thumbUrl);
+      bumpMotionCoverRevision();
       toast.success(t("motionCoverManager.fallbackStatic"));
     } catch {
       toast.error(t("motionCoverManager.applyFailed"));
@@ -289,6 +292,7 @@ const applyStaticCandidate = async (candidate: StaticCoverSearchCandidate): Prom
     media.track = { ...toRaw(track), cover: record.thumbUrl, coverOriginal: record.url };
     history.patchCover(toRaw(track), record.thumbUrl, record.url);
     extractColorFromUrl(record.thumbUrl);
+    bumpMotionCoverRevision();
     toast.success(t("motionCoverManager.applied"));
   } catch {
     toast.error(t("motionCoverManager.applyFailed"));
@@ -322,6 +326,7 @@ const restoreStaticOriginal = async (): Promise<void> => {
     media.track = { ...toRaw(track), cover, coverOriginal };
     history.patchCover(toRaw(track), cover, coverOriginal);
     extractColorFromUrl(coverOriginal ?? cover ?? null);
+    bumpMotionCoverRevision();
     toast.success(t("motionCoverManager.clearManualDone"));
   } catch {
     toast.error(t("motionCoverManager.applyFailed"));
@@ -359,6 +364,7 @@ const restoreAuto = async (): Promise<void> => {
       );
       extractColorFromUrl(record.originalCover ?? track.cover ?? null);
     }
+    bumpMotionCoverRevision();
     toast.success(t("motionCoverManager.clearManualDone"));
   } catch {
     toast.error(t("motionCoverManager.applyFailed"));
