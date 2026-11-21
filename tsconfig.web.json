@@ -15,7 +15,8 @@
       "@/*": ["./src/*"],
       "@shared/*": ["./shared/*"],
       "@windows/*": ["./windows/*"],
-      "@applemusic-like-lyrics/core": ["./vendor/applemusic-like-lyrics/src/index.ts"]
+      "@applemusic-like-lyrics/core": ["./vendor/applemusic-like-lyrics/src/index.ts"],
+      "@applemusic-like-lyrics/core-bg": ["./vendor/applemusic-like-lyrics/src/index.ts"]
     },
     "types": ["./auto-imports.d.ts", "./components.d.ts"]
   }

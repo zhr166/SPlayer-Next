@@ -117,6 +117,10 @@ export default defineConfig({
           __dirname,
           "vendor/applemusic-like-lyrics/src/index.ts",
         ),
+        "@applemusic-like-lyrics/core-bg": resolve(
+          __dirname,
+          "vendor/applemusic-like-lyrics/src/index.ts",
+        ),
       },
     },
     plugins: [

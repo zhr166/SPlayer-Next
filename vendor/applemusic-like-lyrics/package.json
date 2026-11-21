@@ -1,6 +1,6 @@
 {
   "name": "@applemusic-like-lyrics/core",
-  "version": "0.6.0",
+  "version": "0.7.2",
   "private": true,
   "description": "AMLL core kernel mounted from zhr166 fork",
   "license": "AGPL-3.0-only",
