@@ -94,6 +94,7 @@ export const initDatabase = (): void => {
     CREATE TABLE IF NOT EXISTS motion_cover_cache (
       fingerprint TEXT PRIMARY KEY,
       video_url TEXT,
+      track_json TEXT,
       matched_at INTEGER NOT NULL
     );
 

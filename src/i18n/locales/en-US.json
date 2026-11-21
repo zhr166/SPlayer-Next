@@ -795,7 +795,8 @@
       "copyTitle": "Copy Title",
       "copyId": "Copy Song ID",
       "copyUrl": "Share Song Link",
-      "copyFile": "Copy Song File"
+      "copyFile": "Copy Song File",
+      "manageMotionCover": "Cover manager"
     },
     "batch": {
       "manage": "Batch Manage",
@@ -981,6 +982,33 @@
     "removeFolder": "Remove Directory",
     "removeFolderConfirm": "Removing this directory will delete its songs from the library!",
     "nestedHint": "Folder is nested with an existing one; skipped"
+  },
+  "motionCoverManager": {
+    "open": "Cover manager",
+    "title": "Cover manager",
+    "searchPlaceholder": "Search songs or cache keys",
+    "clearAll": "Clear all",
+    "empty": "No cached matches",
+    "matchedAt": "Matched at {time}",
+    "expired": "Expired",
+    "active": "Active",
+    "noCover": "No dynamic cover",
+    "delete": "Delete",
+    "deleteTitle": "Delete this match?",
+    "deleteContent": "The next playback will match again.",
+    "deleteFailed": "Failed to delete",
+    "clearTitle": "Clear dynamic cover cache?",
+    "clearContent": "All cached matches will be removed and matched again on next playback.",
+    "clearDone": "Dynamic cover cache cleared",
+    "clearFailed": "Failed to clear",
+    "copyUrl": "Copy URL",
+    "types": {
+      "track": "Track",
+      "album": "Album",
+      "appleTrack": "Apple track",
+      "collection": "Apple album",
+      "other": "Other"
+    }
   },
   "settings": {
     "title": "Settings",

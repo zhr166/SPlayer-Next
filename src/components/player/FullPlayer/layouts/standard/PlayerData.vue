@@ -1,8 +1,9 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import type { Artist } from "@shared/types/player";
 import type { SSelectOption } from "@/components/ui/SSelect.vue";
 import type { QualityLevel } from "@/utils/quality";
 import { useLyricTrackManagerDialog } from "@/composables/useLyricTrackManagerDialog";
+import { useMotionCoverManagerDialog } from "@/composables/useMotionCoverManagerDialog";
 import ExplicitTag from "@/components/list/ExplicitTag.vue";
 import { useMediaStore } from "@/stores/media";
 import { useSettingsStore } from "@/stores/settings";
@@ -35,6 +36,7 @@ const media = useMediaStore();
 const settings = useSettingsStore();
 const status = useStatusStore();
 const lyricManager = useLyricTrackManagerDialog();
+const motionCoverManager = useMotionCoverManagerDialog();
 
 /** 加载中的歌曲 */
 const displayTrack = computed(() => media.track ?? status.currentTrack);
@@ -344,6 +346,17 @@ const alignItems = computed(() => {
           }}
         </div>
       </SPopover>
+    </div>
+    <!-- 封面管理 -->
+    <div v-if="!simple" class="max-w-full flex items-center gap-1.5 text-[1.2em] text-cover/60">
+      <IconLucideClapperboard class="shrink-0 translate-y-px text-cover/40" />
+      <button
+        type="button"
+        class="cursor-pointer border-0 bg-transparent p-0 font-inherit text-inherit transition-colors hover:text-cover"
+        @click="motionCoverManager.show(displayTrack.title)"
+      >
+        {{ t("motionCoverManager.open") }}
+      </button>
     </div>
     <!-- 歌手 -->
     <div class="max-w-full flex items-center gap-1.5 text-[1.2em] text-cover/60">

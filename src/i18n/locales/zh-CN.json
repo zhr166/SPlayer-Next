@@ -795,7 +795,8 @@
       "copyTitle": "复制歌曲名称",
       "copyId": "复制歌曲 ID",
       "copyUrl": "分享歌曲链接",
-      "copyFile": "复制歌曲文件"
+      "copyFile": "复制歌曲文件",
+      "manageMotionCover": "封面管理"
     },
     "batch": {
       "manage": "批量管理",
@@ -981,6 +982,33 @@
     "removeFolder": "移除此目录",
     "removeFolderConfirm": "移除该目录后，其中的歌曲将从音乐库中删除！",
     "nestedHint": "该目录与已添加目录嵌套，已自动跳过"
+  },
+  "motionCoverManager": {
+    "open": "封面管理",
+    "title": "封面管理",
+    "searchPlaceholder": "搜索歌曲或缓存键",
+    "clearAll": "清空全部",
+    "empty": "暂无匹配记录",
+    "matchedAt": "匹配于 {time}",
+    "expired": "已过期",
+    "active": "有效",
+    "noCover": "无动态封面",
+    "delete": "删除",
+    "deleteTitle": "删除这条匹配？",
+    "deleteContent": "删除后下次播放会重新匹配。",
+    "deleteFailed": "删除失败",
+    "clearTitle": "清空动态封面缓存？",
+    "clearContent": "全部匹配记录将被删除，下次播放重新匹配。",
+    "clearDone": "已清空动态封面缓存",
+    "clearFailed": "清空失败",
+    "copyUrl": "复制地址",
+    "types": {
+      "track": "曲目",
+      "album": "专辑",
+      "appleTrack": "Apple 曲目",
+      "collection": "Apple 专辑",
+      "other": "其他"
+    }
   },
   "settings": {
     "title": "设置",
