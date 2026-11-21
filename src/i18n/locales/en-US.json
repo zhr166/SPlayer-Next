@@ -1011,7 +1011,8 @@
     },
     "tabs": {
       "cache": "Cached",
-      "search": "Search"
+      "search": "Search",
+      "static": "Static"
     },
     "manualActive": "Manually set",
     "restoreAuto": "Restore auto",
@@ -1029,7 +1030,10 @@
     "applied": "Dynamic cover applied",
     "applyFailed": "Operation failed",
     "clearManualDone": "Restored automatic matching",
-    "noTrack": "Play a track first"
+    "noTrack": "Play a track first",
+    "staticManualActive": "Manual static cover",
+    "restoreOriginal": "Restore original",
+    "staticEmpty": "Search and pick a static cover"
   },
   "settings": {
     "title": "Settings",

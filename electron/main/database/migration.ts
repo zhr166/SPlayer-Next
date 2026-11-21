@@ -1,7 +1,7 @@
 import type Database from "better-sqlite3";
 
 /** 当前 schema 版本 */
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 
 type TableInfoRow = { name: string };
 
@@ -112,6 +112,18 @@ export const migrate = (d: Database.Database): void => {
       );
     `);
     v = 10;
+  }
+
+  if (v < 11) {
+    d.exec(`
+      CREATE TABLE IF NOT EXISTS static_cover_manual (
+        track_key TEXT PRIMARY KEY,
+        source TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+    `);
+    v = 11;
   }
 
   // 版本无关部分

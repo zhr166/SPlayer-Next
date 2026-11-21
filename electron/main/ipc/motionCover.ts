@@ -16,10 +16,17 @@ import {
   listMotionCoverRecords,
 } from "@main/database/motionCoverCache";
 import { clearManualMotionCover, getManualMotionCover } from "@main/database/motionCoverManual";
+import { clearStaticCoverManual, getStaticCoverManual } from "@main/database/staticCoverManual";
+import {
+  applyStaticCover,
+  searchAmStaticCovers,
+  searchNcmStaticCovers,
+} from "@main/services/staticCover";
 import type {
   MotionCoverSearchCandidate,
   MotionCoverSearchSource,
   MotionCoverSource,
+  StaticCoverSearchCandidate,
   Track,
 } from "@shared/types/player";
 
@@ -47,4 +54,14 @@ export const registerMotionCoverIpc = (): void => {
   );
   ipcMain.handle("motionCover:getManual", (_evt, track: Track) => getManualMotionCover(track));
   ipcMain.handle("motionCover:clearManual", (_evt, track: Track) => clearManualMotionCover(track));
+  ipcMain.handle(
+    "staticCover:search",
+    (_evt, source: MotionCoverSearchSource, keyword: string, storefront: string) =>
+      source === "ncm" ? searchNcmStaticCovers(keyword) : searchAmStaticCovers(keyword, storefront),
+  );
+  ipcMain.handle("staticCover:apply", (_evt, track: Track, candidate: StaticCoverSearchCandidate) =>
+    applyStaticCover(track, candidate),
+  );
+  ipcMain.handle("staticCover:get", (_evt, track: Track) => getStaticCoverManual(track));
+  ipcMain.handle("staticCover:clear", (_evt, track: Track) => clearStaticCoverManual(track));
 };

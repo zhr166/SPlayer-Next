@@ -5,6 +5,8 @@ import {
   MotionCoverSearchCandidate,
   MotionCoverSearchSource,
   MotionCoverSource,
+  StaticCoverManualRecord,
+  StaticCoverSearchCandidate,
   PlayerApi,
   Track,
   TrackSource,
@@ -118,6 +120,17 @@ declare global {
         ) => Promise<MotionCoverManualRecord>;
         getManual: (track: Track) => Promise<MotionCoverManualRecord | null>;
         clearManual: (track: Track) => Promise<void>;
+        searchStatic: (
+          source: MotionCoverSearchSource,
+          keyword: string,
+          storefront: string,
+        ) => Promise<StaticCoverSearchCandidate[]>;
+        applyStatic: (
+          track: Track,
+          candidate: StaticCoverSearchCandidate,
+        ) => Promise<StaticCoverManualRecord>;
+        getStatic: (track: Track) => Promise<StaticCoverManualRecord | null>;
+        clearStatic: (track: Track) => Promise<void>;
       };
       theme: {
         pickBackgroundImage: () => Promise<string | null>;

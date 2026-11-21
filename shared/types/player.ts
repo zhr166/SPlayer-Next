@@ -273,6 +273,32 @@ export interface MotionCoverSearchCandidate {
   trackId?: number;
 }
 
+/** 静态封面搜索候选 */
+export interface StaticCoverSearchCandidate {
+  id: string;
+  source: "ncm" | "am";
+  title: string;
+  artist: string;
+  album?: string;
+  /** 列表用小图 */
+  cover: string;
+  /** 播放器用大图 */
+  coverLarge: string;
+}
+
+/** 手动指定的静态封面 */
+export interface StaticCoverManualRecord {
+  source: "ncm" | "am";
+  /** 播放器大图 */
+  url: string;
+  /** 列表小图 */
+  thumbUrl: string;
+  /** 应用前的原始封面，用于恢复原版 */
+  originalCover?: string;
+  originalCoverOriginal?: string;
+  updatedAt: number;
+}
+
 /** 手动指定的动态封面 */
 export interface MotionCoverManualRecord {
   source: MotionCoverSearchSource;
@@ -284,6 +310,9 @@ export interface MotionCoverManualRecord {
   artist?: string;
   album?: string;
   cover?: string;
+  /** 应用前的原始封面，用于恢复原版 */
+  originalCover?: string;
+  originalCoverOriginal?: string;
   updatedAt: number;
 }
 

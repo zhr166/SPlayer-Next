@@ -1011,7 +1011,8 @@
     },
     "tabs": {
       "cache": "缓存记录",
-      "search": "搜索封面"
+      "search": "搜索封面",
+      "static": "静态封面"
     },
     "manualActive": "已手动指定",
     "restoreAuto": "恢复自动",
@@ -1029,7 +1030,10 @@
     "applied": "已应用动态封面",
     "applyFailed": "操作失败",
     "clearManualDone": "已恢复自动匹配",
-    "noTrack": "请先播放一首歌"
+    "noTrack": "请先播放一首歌",
+    "staticManualActive": "已手动指定静态封面",
+    "restoreOriginal": "恢复原版",
+    "staticEmpty": "搜索并选择一张静态封面"
   },
   "settings": {
     "title": "设置",

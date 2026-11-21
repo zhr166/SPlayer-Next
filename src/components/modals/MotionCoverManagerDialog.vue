@@ -4,6 +4,8 @@ import type {
   MotionCoverManualRecord,
   MotionCoverSearchCandidate,
   MotionCoverSearchSource,
+  StaticCoverManualRecord,
+  StaticCoverSearchCandidate,
   Track,
 } from "@shared/types/player";
 import { dialog } from "@/composables/useDialog";
@@ -24,11 +26,17 @@ const { open, keyword } = manager;
 const HIT_TTL_MS = 24 * 60 * 60 * 1000;
 const MISS_TTL_MS = 10 * 60 * 1000;
 
-const tab = ref<"cache" | "search">("cache");
+const tab = ref<"cache" | "search" | "static">("cache");
 const loading = ref(false);
 const search = ref("");
 const records = shallowRef<MotionCoverCacheRecord[]>([]);
 const manual = shallowRef<MotionCoverManualRecord | null>(null);
+const staticManual = shallowRef<StaticCoverManualRecord | null>(null);
+const staticSource = ref<MotionCoverSearchSource>("ncm");
+const staticStorefront = ref(settings.player.appleMusicStorefront || "us");
+const staticKeyword = ref("");
+const staticSearching = ref(false);
+const staticResults = shallowRef<StaticCoverSearchCandidate[]>([]);
 
 const currentTrack = computed<Track | null>(() => manager.track.value ?? media.track ?? null);
 
@@ -67,6 +75,7 @@ const loadManual = async (): Promise<void> => {
     return;
   }
   manual.value = await window.api.motionCover.getManual(track);
+  staticManual.value = await window.api.motionCover.getStatic(track);
 };
 
 /** 按缓存键前缀归类，方便区分曲目与专辑记录 */
@@ -190,11 +199,66 @@ const applyCandidate = async (candidate: MotionCoverSearchCandidate): Promise<vo
   applyingId.value = candidate.id;
   try {
     manual.value = await window.api.motionCover.applyManual(toRaw(track), candidate);
+    if (candidate.cover) {
+      media.track = { ...toRaw(track), cover: candidate.cover, coverOriginal: candidate.cover };
+    }
     toast.success(t("motionCoverManager.applied"));
   } catch {
     toast.error(t("motionCoverManager.applyFailed"));
   } finally {
     applyingId.value = "";
+  }
+};
+
+const runStaticSearch = async (): Promise<void> => {
+  const term = staticKeyword.value.trim();
+  if (!term) return;
+  staticSearching.value = true;
+  try {
+    staticResults.value = await window.api.motionCover.searchStatic(
+      staticSource.value,
+      term,
+      staticStorefront.value,
+    );
+  } catch {
+    toast.error(t("motionCoverManager.searchFailed"));
+  } finally {
+    staticSearching.value = false;
+  }
+};
+
+const applyStaticCandidate = async (candidate: StaticCoverSearchCandidate): Promise<void> => {
+  const track = currentTrack.value;
+  if (!track) {
+    toast.error(t("motionCoverManager.noTrack"));
+    return;
+  }
+  try {
+    const record = await window.api.motionCover.applyStatic(toRaw(track), candidate);
+    staticManual.value = record;
+    media.track = { ...toRaw(track), cover: record.thumbUrl, coverOriginal: record.url };
+    toast.success(t("motionCoverManager.applied"));
+  } catch {
+    toast.error(t("motionCoverManager.applyFailed"));
+  }
+};
+
+/** 恢复歌曲原始静态封面 */
+const restoreStaticOriginal = async (): Promise<void> => {
+  const track = currentTrack.value;
+  if (!track) return;
+  const record = staticManual.value;
+  try {
+    await window.api.motionCover.clearStatic(track);
+    staticManual.value = null;
+    media.track = {
+      ...toRaw(track),
+      cover: record?.originalCover ?? track.cover,
+      coverOriginal: record?.originalCoverOriginal ?? track.coverOriginal,
+    };
+    toast.success(t("motionCoverManager.clearManualDone"));
+  } catch {
+    toast.error(t("motionCoverManager.applyFailed"));
   }
 };
 
@@ -204,7 +268,15 @@ const restoreAuto = async (): Promise<void> => {
   if (!track) return;
   try {
     await window.api.motionCover.clearManual(track);
+    const record = manual.value;
     manual.value = null;
+    if (record) {
+      media.track = {
+        ...toRaw(track),
+        cover: record.originalCover ?? track.cover,
+        coverOriginal: record.originalCoverOriginal ?? track.coverOriginal,
+      };
+    }
     toast.success(t("motionCoverManager.clearManualDone"));
   } catch {
     toast.error(t("motionCoverManager.applyFailed"));
@@ -218,6 +290,8 @@ watch(open, (value) => {
   search.value = keyword.value;
   searchKeyword.value = keyword.value || currentTrack.value?.title || "";
   results.value = [];
+  staticKeyword.value = keyword.value || currentTrack.value?.title || "";
+  staticResults.value = [];
   previewUrl.value = "";
   void loadCache();
   void loadManual();
@@ -276,6 +350,14 @@ watch(open, (value) => {
           @click="tab = 'search'"
         >
           {{ t("motionCoverManager.tabs.search") }}
+        </SButton>
+        <SButton
+          :variant="tab === 'static' ? 'filled' : 'secondary'"
+          size="small"
+          :disabled="!currentTrack"
+          @click="tab = 'static'"
+        >
+          {{ t("motionCoverManager.tabs.static") }}
         </SButton>
       </div>
 
@@ -377,7 +459,7 @@ watch(open, (value) => {
       </template>
 
       <!-- 在线搜索 -->
-      <template v-else>
+      <template v-else-if="tab === 'search'">
         <div class="flex flex-wrap items-center gap-2">
           <SButton
             :variant="source === 'ncm' ? 'filled' : 'secondary'"
@@ -472,6 +554,92 @@ watch(open, (value) => {
           >
             {{ t("motionCoverManager.apply") }}
           </SButton>
+        </div>
+      </template>
+
+      <!-- 静态封面 -->
+      <template v-else>
+        <div
+          v-if="staticManual"
+          class="flex items-center gap-3 rounded-xl bg-surface-panel border border-solid border-outline-variant/15 px-4 py-3"
+        >
+          <img
+            :src="staticManual.thumbUrl"
+            class="size-10 shrink-0 rounded object-cover"
+            decoding="async"
+          />
+          <div class="min-w-0 flex-1 text-sm">{{ t("motionCoverManager.staticManualActive") }}</div>
+          <SButton variant="secondary" size="small" @click="restoreStaticOriginal">
+            {{ t("motionCoverManager.restoreOriginal") }}
+          </SButton>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <SButton
+            :variant="staticSource === 'ncm' ? 'filled' : 'secondary'"
+            size="small"
+            @click="
+              staticSource = 'ncm';
+              staticResults = [];
+            "
+          >
+            {{ t("motionCoverManager.sources.ncm") }}
+          </SButton>
+          <SButton
+            :variant="staticSource === 'am' ? 'filled' : 'secondary'"
+            size="small"
+            @click="
+              staticSource = 'am';
+              staticResults = [];
+            "
+          >
+            {{ t("motionCoverManager.sources.am") }}
+          </SButton>
+          <div v-if="staticSource === 'am'" class="w-36">
+            <SSelect v-model="staticStorefront" :options="storefrontOptions" />
+          </div>
+          <SInput
+            v-model="staticKeyword"
+            class="min-w-48 flex-1"
+            :placeholder="t('motionCoverManager.searchPlaceholder')"
+            clearable
+            @keydown.enter="runStaticSearch"
+          />
+          <SButton
+            variant="secondary"
+            size="small"
+            :loading="staticSearching"
+            @click="runStaticSearch"
+          >
+            {{ t("motionCoverManager.search") }}
+          </SButton>
+        </div>
+
+        <div
+          v-if="!staticSearching && staticResults.length === 0"
+          class="py-8 text-center text-sm text-on-surface-variant/60"
+        >
+          {{ t("motionCoverManager.staticEmpty") }}
+        </div>
+
+        <div class="grid grid-cols-4 gap-3">
+          <button
+            v-for="candidate in staticResults"
+            :key="`${candidate.source}:${candidate.id}`"
+            type="button"
+            class="group flex flex-col gap-1 rounded-xl border border-solid border-outline-variant/15 bg-surface-panel p-2 text-left transition-colors hover:border-primary/40"
+            @click="applyStaticCandidate(candidate)"
+          >
+            <img
+              :src="candidate.cover"
+              class="aspect-square w-full rounded-lg object-cover"
+              decoding="async"
+            />
+            <span class="truncate text-xs font-medium">{{ candidate.title }}</span>
+            <span class="truncate text-[11px] text-on-surface-variant/60">
+              {{ candidate.artist }}
+            </span>
+          </button>
         </div>
       </template>
     </div>

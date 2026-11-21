@@ -21,6 +21,8 @@ import type {
   MotionCoverManualRecord,
   MotionCoverSearchCandidate,
   MotionCoverSearchSource,
+  StaticCoverManualRecord,
+  StaticCoverSearchCandidate,
   Track,
   TrackSource,
   TransitionPreference,
@@ -794,6 +796,24 @@ const api = {
     // 清除当前曲目的手动封面
     clearManual: (track: Track): Promise<void> =>
       ipcRenderer.invoke("motionCover:clearManual", track),
+    // 搜索静态封面候选
+    searchStatic: (
+      source: MotionCoverSearchSource,
+      keyword: string,
+      storefront: string,
+    ): Promise<StaticCoverSearchCandidate[]> =>
+      ipcRenderer.invoke("staticCover:search", source, keyword, storefront),
+    // 应用手动静态封面
+    applyStatic: (
+      track: Track,
+      candidate: StaticCoverSearchCandidate,
+    ): Promise<StaticCoverManualRecord> =>
+      ipcRenderer.invoke("staticCover:apply", track, candidate),
+    // 读取手动静态封面
+    getStatic: (track: Track): Promise<StaticCoverManualRecord | null> =>
+      ipcRenderer.invoke("staticCover:get", track),
+    // 清除手动静态封面
+    clearStatic: (track: Track): Promise<void> => ipcRenderer.invoke("staticCover:clear", track),
   },
   theme: {
     // 弹出文件选择框
