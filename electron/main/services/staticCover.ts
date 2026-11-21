@@ -6,7 +6,7 @@
 
 import { net } from "electron";
 import { callNetease } from "@main/apis/netease";
-import { setStaticCoverManual } from "@main/database/staticCoverManual";
+import { getStaticCoverManual, setStaticCoverManual } from "@main/database/staticCoverManual";
 import type {
   StaticCoverManualRecord,
   StaticCoverSearchCandidate,
@@ -107,12 +107,14 @@ export const applyStaticCover = (
   track: Track,
   candidate: StaticCoverSearchCandidate,
 ): StaticCoverManualRecord => {
+  // 重复应用时保留第一次记录的原始封面，避免把上一次的手动图当成原版
+  const existing = getStaticCoverManual(track);
   const record: StaticCoverManualRecord = {
     source: candidate.source,
     url: candidate.coverLarge,
     thumbUrl: candidate.cover,
-    originalCover: track.cover,
-    originalCoverOriginal: track.coverOriginal,
+    originalCover: existing?.originalCover ?? track.cover,
+    originalCoverOriginal: existing?.originalCoverOriginal ?? track.coverOriginal,
     updatedAt: Date.now(),
   };
   setStaticCoverManual(track, record);

@@ -1057,8 +1057,9 @@ export const applyManualMotionCover = async (
     artist: candidate.artist,
     album: candidate.album,
     cover: candidate.cover,
-    originalCover: track.cover,
-    originalCoverOriginal: track.coverOriginal,
+    originalCover: getManualMotionCover(track)?.originalCover ?? track.cover,
+    originalCoverOriginal:
+      getManualMotionCover(track)?.originalCoverOriginal ?? track.coverOriginal,
     updatedAt: Date.now(),
   };
   setManualMotionCover(track, record);

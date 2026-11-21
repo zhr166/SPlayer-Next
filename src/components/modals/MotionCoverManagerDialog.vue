@@ -13,12 +13,14 @@ import { toast } from "@/composables/useToast";
 import { useCopyText } from "@/composables/useCopyText";
 import { useMotionCoverManagerDialog } from "@/composables/useMotionCoverManagerDialog";
 import { useMediaStore } from "@/stores/media";
+import { useStatusStore } from "@/stores/status";
 import { useSettingsStore } from "@/stores/settings";
 import { extractColorFromUrl } from "@/utils/color";
 
 const { t } = useI18n();
 const { copy } = useCopyText();
 const media = useMediaStore();
+const status = useStatusStore();
 const settings = useSettingsStore();
 const manager = useMotionCoverManagerDialog();
 const { open, keyword } = manager;
@@ -297,7 +299,25 @@ const restoreStaticOriginal = async (): Promise<void> => {
     await window.api.motionCover.clearStatic(track);
     if (!isSameTrack(track)) return;
     staticManual.value = null;
-    // 回退优先级：手动动态封面的静态图 > 应用静态图前的原始封面
+    // 旧记录可能把手动图误存成原版，这时用队列里的原始曲目兜底
+    const rawTrack =
+      status.currentTrack &&
+      `${status.currentTrack.source}:${status.currentTrack.id}` === `${track.source}:${track.id}`
+        ? status.currentTrack
+        : null;
+    const storedCover =
+      record?.originalCover &&
+      record.originalCover !== record.thumbUrl &&
+      record.originalCover !== record.url
+        ? record.originalCover
+        : null;
+    const storedCoverOriginal =
+      record?.originalCoverOriginal &&
+      record.originalCoverOriginal !== record.url &&
+      record.originalCoverOriginal !== record.thumbUrl
+        ? record.originalCoverOriginal
+        : null;
+    // 回退优先级：手动动态封面的静态图 > 可信的原始封面 > 队列原始曲目
     if (manual.value?.cover) {
       media.track = {
         ...toRaw(track),
@@ -308,11 +328,16 @@ const restoreStaticOriginal = async (): Promise<void> => {
     } else {
       media.track = {
         ...toRaw(track),
-        cover: record?.originalCover ?? track.cover,
-        coverOriginal: record?.originalCoverOriginal ?? track.coverOriginal,
+        cover: storedCover ?? rawTrack?.cover ?? track.cover,
+        coverOriginal: storedCoverOriginal ?? rawTrack?.coverOriginal ?? track.coverOriginal,
       };
       extractColorFromUrl(
-        record?.originalCoverOriginal ?? record?.originalCover ?? track.cover ?? null,
+        storedCoverOriginal ??
+          storedCover ??
+          rawTrack?.coverOriginal ??
+          rawTrack?.cover ??
+          track.cover ??
+          null,
       );
     }
     toast.success(t("motionCoverManager.clearManualDone"));
