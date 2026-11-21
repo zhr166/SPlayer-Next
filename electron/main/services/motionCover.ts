@@ -282,6 +282,38 @@ const fetchAlbumInfo = async (
 };
 
 /**
+ * 通过 AMP 目录搜索专辑，拿到该区真实专辑 ID
+ * @param term - 搜索词
+ * @param storefront - 地区
+ * @param signal - 中止信号
+ * @returns 专辑候选
+ */
+const searchAmpAlbums = async (
+  term: string,
+  storefront: string,
+  signal: AbortSignal,
+): Promise<{ id: string; name?: string }[]> => {
+  try {
+    const token = await getDeveloperToken();
+    const url = `https://amp-api.music.apple.com/v1/catalog/${storefront}/search?term=${encodeURIComponent(term)}&types=albums&limit=10`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}`, Origin: "https://music.apple.com" },
+      signal,
+    });
+    if (!res.ok) return [];
+    const body = (await res.json()) as {
+      results?: { albums?: { data?: { id?: string; attributes?: { name?: string } }[] } };
+    };
+    return (body.results?.albums?.data ?? [])
+      .filter((album) => album.id)
+      .map((album) => ({ id: album.id!, name: album.attributes?.name }));
+  } catch (err) {
+    if ((err as Error).name === "AbortError") throw err;
+    return [];
+  }
+};
+
+/**
  * 读取专辑静态封面地址
  * @param collectionId - 专辑 id
  * @param storefront - 地区
@@ -928,7 +960,41 @@ export const resolveMotionCoverCandidate = async (
     }
   }
 
-  // 同一专辑 ID 在主要区都没有时，按名称在其它区重新搜索匹配
+  // iTunes 可能返回无动态的同名旧版专辑，先用 AMP 专辑搜索拿该区正式的专辑 ID
+  const albumTerm =
+    `${candidate.album ?? ""} ${candidate.artist}`.trim() ||
+    `${candidate.title} ${candidate.artist}`.trim();
+  const triedAmp = new Set<string>();
+  if (albumTerm) {
+    for (const storefront of [candidate.storefront, ...AM_VIDEO_STOREFRONTS]) {
+      try {
+        const albums = await searchAmpAlbums(albumTerm, storefront, controller.signal);
+        for (const album of albums.slice(0, 5)) {
+          if (candidate.album && !isSameAlbumName(candidate.album, album.name)) continue;
+          const key = `${storefront}:${album.id}`;
+          if (triedAmp.has(key)) continue;
+          triedAmp.add(key);
+          const collectionId = Number(album.id);
+          if (!Number.isSafeInteger(collectionId)) continue;
+          try {
+            const info = await fetchAlbumInfo(collectionId, storefront, controller.signal);
+            if (info.video) {
+              motionCoverLog.info(
+                `${candidate.title}：AMP 专辑搜索命中 ${storefront}/${collectionId}`,
+              );
+              return info.video;
+            }
+          } catch (err) {
+            if ((err as Error).name === "AbortError") throw err;
+          }
+        }
+      } catch (err) {
+        if ((err as Error).name === "AbortError") throw err;
+      }
+    }
+  }
+
+  // 仍没有时，按名称在其它区重新搜索 iTunes 匹配
   const term = `${candidate.title} ${candidate.artist}`.trim();
   if (!term) return null;
   const matchedCollections = new Set<string>();
