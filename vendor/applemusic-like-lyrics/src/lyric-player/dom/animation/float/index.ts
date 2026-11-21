@@ -20,6 +20,7 @@ export interface FloatAnimationOptions {
 	 * 背景歌词行的上浮位移幅度是主歌词行的两倍
 	 */
 	isBG: boolean;
+	intensity?: number;
 }
 
 /**
@@ -37,12 +38,12 @@ export function createFloatAnimation(
 	wordEl: HTMLElement,
 	options: FloatAnimationOptions,
 ): Animation {
-	const { word, lineStartTime, isBG } = options;
+	const { word, lineStartTime, isBG, intensity = 1 } = options;
 
 	const delay = word.startTime - lineStartTime;
 	const duration = Math.max(1000, word.endTime - word.startTime);
 
-	let up = 0.05;
+	let up = 0.05 * intensity;
 	if (isBG) {
 		up *= 2;
 	}

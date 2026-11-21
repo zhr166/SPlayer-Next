@@ -15,15 +15,14 @@ const WHITESPACE_RE = /\s/g;
  */
 export function chunkAndSplitLyricWords(
 	words: LyricWord[],
+	skipWhitespaceSplit = false,
 ): (LyricWord | LyricWord[])[] {
 	const result: (LyricWord | LyricWord[])[] = [];
 	let currentGroup: LyricWord[] = [];
 
 	const flushGroup = () => {
 		if (currentGroup.length > 0) {
-			result.push(
-				currentGroup.length === 1 ? currentGroup[0] : [...currentGroup],
-			);
+			result.push(currentGroup.length === 1 ? currentGroup[0] : [...currentGroup]);
 			currentGroup = [];
 		}
 	};
@@ -89,6 +88,24 @@ export function chunkAndSplitLyricWords(
 			continue;
 		}
 
+		if (skipWhitespaceSplit) {
+			const trailingWhitespace = w.word.match(/\s+$/)?.[0] ?? "";
+			processAtom({
+				...w,
+				word: w.word.slice(0, w.word.length - trailingWhitespace.length),
+			});
+			if (trailingWhitespace) {
+				processAtom({
+					word: trailingWhitespace,
+					romanWord: "",
+					startTime: w.endTime,
+					endTime: w.endTime,
+					obscene: obscene,
+				});
+			}
+			continue;
+		}
+
 		const parts = w.word.split(SPLIT_WHITESPACE_RE).filter((p) => p.length > 0);
 
 		const totalLength = w.word.replace(WHITESPACE_RE, "").length || 1;
@@ -101,11 +118,8 @@ export function chunkAndSplitLyricWords(
 			.filter((p) => p.length > 0);
 		const romanTrimmed = romanWord.trim();
 		const romanParts =
-			romanTrimmed.length > 0
-				? romanTrimmed.split(/\s+/).filter((p) => p.length > 0)
-				: [];
-		const isMatched =
-			wordParts.length > 0 && wordParts.length === romanParts.length;
+			romanTrimmed.length > 0 ? romanTrimmed.split(/\s+/).filter((p) => p.length > 0) : [];
+		const isMatched = wordParts.length > 0 && wordParts.length === romanParts.length;
 
 		let currentOffset = 0;
 		let nonSpaceIndex = 0;

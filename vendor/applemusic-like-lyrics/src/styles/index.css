@@ -34,3 +34,9 @@
 		--amll-lp-line-padding-x: 0;
 	}
 }
+
+/* SPlayer 私有遮罩层：保持单词宽度参与布局与测量 */
+.amll-main-mask,
+.amll-roman-mask {
+	display: inline-block;
+}

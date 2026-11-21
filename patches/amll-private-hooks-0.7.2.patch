@@ -1,0 +1,692 @@
+--- a/vendor/applemusic-like-lyrics/src/lyric-player/dom/lyric-line.ts
++++ b/vendor/applemusic-like-lyrics/src/lyric-player/dom/lyric-line.ts
+@@ -23,6 +23,8 @@
+ 
+ interface RealWord extends LyricWord {
+ 	mainElement: HTMLSpanElement;
++	mainMaskElement?: HTMLElement;
++	romanMaskElement?: HTMLElement;
+ 	subElements: HTMLSpanElement[];
+ 	elementAnimations: Animation[];
+ 	width: number;
+@@ -39,7 +41,7 @@
+ 	private enableTextAutospace = false;
+ 
+ 	private renderMode: LyricLineRenderMode = LyricLineRenderMode.SOLID;
+-	private maskAnimator?: LineMaskAnimator;
++	private maskAnimators: LineMaskAnimator[] = [];
+ 	/**
+ 	 * 亮层与均匀副本
+ 	 *
+@@ -78,9 +80,7 @@
+ 		},
+ 	) {
+ 		super();
+-		this.lineHasRubyWords = this.lyricLine.words.some(
+-			(word) => (word.ruby?.length ?? 0) > 0,
+-		);
++		this.lineHasRubyWords = this.lyricLine.words.some((word) => (word.ruby?.length ?? 0) > 0);
+ 		this.lineHasRomanWords = this.lyricLine.words.some(
+ 			(word) => (word.romanWord?.trim().length ?? 0) > 0,
+ 		);
+@@ -100,10 +100,7 @@
+ 		const roman = this.element.children[2] as HTMLDivElement;
+ 		main.setAttribute("class", styles.lyricMainLine);
+ 		main.dataset.amllRole = "main";
+-		this.brightness = new LineBrightness(
+-			main,
+-			!this.lyricPlayer._getIsNonDynamic(),
+-		);
++		this.brightness = new LineBrightness(main, !this.lyricPlayer._getIsNonDynamic());
+ 		trans.setAttribute("class", styles.lyricSubLine);
+ 		trans.dataset.amllRole = "translation";
+ 		roman.setAttribute("class", styles.lyricSubLine);
+@@ -124,9 +121,7 @@
+ 		this.element.classList.add(styles.active);
+ 		const main = this.element.children[0] as HTMLDivElement;
+ 
+-		const relativeTime = clampPositive(
+-			maskAnimationTime - this.lyricLine.startTime,
+-		);
++		const relativeTime = clampPositive(maskAnimationTime - this.lyricLine.startTime);
+ 
+ 		for (const word of this.splittedWords) {
+ 			for (const a of word.elementAnimations) {
+@@ -134,14 +129,13 @@
+ 				a.playbackRate = 1;
+ 
+ 				const timing = a.effect?.getComputedTiming();
+-				const endTime =
+-					Number(timing?.delay ?? 0) + Number(timing?.duration ?? 0);
++				const endTime = Number(timing?.delay ?? 0) + Number(timing?.duration ?? 0);
+ 				if (shouldPlay && relativeTime < endTime) a.play();
+ 				else a.pause();
+ 			}
+ 		}
+ 
+-		this.maskAnimator?.setCurrentTime(relativeTime, shouldPlay);
++		for (const animator of this.maskAnimators) animator.setCurrentTime(relativeTime, shouldPlay);
+ 
+ 		main.classList.add(styles.active);
+ 	}
+@@ -155,17 +149,14 @@
+ 
+ 		for (const word of this.splittedWords) {
+ 			for (const a of word.elementAnimations) {
+-				if (
+-					a.id === "float-word" ||
+-					a.id.includes("emphasize-word-float-only")
+-				) {
++				if (a.id === "float-word" || a.id.includes("emphasize-word-float-only")) {
+ 					a.playbackRate = -1;
+ 					a.play();
+ 				}
+ 			}
+ 		}
+ 
+-		this.maskAnimator?.pause();
++		for (const animator of this.maskAnimators) animator.pause();
+ 		main.classList.remove(styles.active);
+ 	}
+ 
+@@ -177,21 +168,15 @@
+ 			for (const a of word.elementAnimations) {
+ 				if (
+ 					!this.lastWord ||
+-					this.splittedWords.indexOf(this.lastWord) <
+-						this.splittedWords.indexOf(word)
++					this.splittedWords.indexOf(this.lastWord) < this.splittedWords.indexOf(word)
+ 				) {
+ 					const timing = a.effect?.getComputedTiming();
+-					const endTime =
+-						Number(timing?.delay ?? 0) + Number(timing?.duration ?? 0);
+-					if (
+-						a.playState !== "finished" &&
+-						((a.currentTime as number) || 0) < endTime
+-					)
+-						a.play();
++					const endTime = Number(timing?.delay ?? 0) + Number(timing?.duration ?? 0);
++					if (a.playState !== "finished" && ((a.currentTime as number) || 0) < endTime) a.play();
+ 				}
+ 			}
+ 		}
+-		this.maskAnimator?.resume();
++		for (const animator of this.maskAnimators) animator.resume();
+ 	}
+ 
+ 	async pause(): Promise<void> {
+@@ -201,7 +186,7 @@
+ 				a.pause();
+ 			}
+ 		}
+-		this.maskAnimator?.pause();
++		for (const animator of this.maskAnimators) animator.pause();
+ 	}
+ 
+ 	getLine(): LyricLine {
+@@ -213,7 +198,7 @@
+ 		if (!this.built) {
+ 			this.rebuildElement();
+ 			this.built = true;
+-		} else if (!this.maskAnimator) {
++		} else if (this.maskAnimators.length === 0) {
+ 			// 遮罩曾随元素重建而释放，重新进入渲染范围时需重新构建
+ 			this.updateMaskImageSync();
+ 		}
+@@ -255,7 +240,11 @@
+ 			return;
+ 		}
+ 
+-		const chunkedWords = chunkAndSplitLyricWords(this.lyricLine.words);
++		const chunkedWords = chunkAndSplitLyricWords(
++			this.lyricLine.words,
++			(this.lyricLine as LyricLine & { __amllSkipWhitespaceSplit?: true })
++				.__amllSkipWhitespaceSplit === true,
++		);
+ 		main.innerHTML = "";
+ 
+ 		let previousText = "";
+@@ -284,16 +273,11 @@
+ 	}
+ 
+ 	private getRubyCharCount(word: LyricWord) {
+-		return (word.ruby ?? []).reduce(
+-			(total, ruby) => total + ruby.word.length,
+-			0,
+-		);
++		return (word.ruby ?? []).reduce((total, ruby) => total + ruby.word.length, 0);
+ 	}
+ 
+ 	private getRubySegments(word: LyricWord) {
+-		return (word.ruby ?? []).filter(
+-			(ruby) => (ruby?.word?.trim().length ?? 0) > 0,
+-		);
++		return (word.ruby ?? []).filter((ruby) => (ruby?.word?.trim().length ?? 0) > 0);
+ 	}
+ 
+ 	private createWord(
+@@ -304,9 +288,20 @@
+ 		const mainWordEl = document.createElement("span");
+ 		const subElements: HTMLSpanElement[] = [];
+ 		const romanWord = word.romanWord?.trim() ?? "";
+-		const wordContainer = this.lineHasRubyWords
+-			? document.createElement("span")
+-			: mainWordEl;
++		const hookLine = this.lyricLine as LyricLine & {
++			__amllIndependentMainWordMask?: true;
++			__amllIndependentRomanWordMask?: true;
++		};
++		const separateMasks =
++			hookLine.__amllIndependentMainWordMask === true ||
++			hookLine.__amllIndependentRomanWordMask === true;
++		const mainMaskElement = separateMasks ? document.createElement("div") : undefined;
++		if (mainMaskElement) {
++			mainMaskElement.classList.add("amll-main-mask");
++			mainWordEl.appendChild(mainMaskElement);
++		}
++		const maskRoot = mainMaskElement ?? mainWordEl;
++		const wordContainer = this.lineHasRubyWords ? document.createElement("span") : maskRoot;
+ 		const wordTextContainer = this.lineHasRubyWords
+ 			? document.createElement("span")
+ 			: wordContainer;
+@@ -326,8 +321,8 @@
+ 			wordContainer.classList.add(styles.wordBody);
+ 			wordTextContainer.classList.add(styles.rubyBaseWord);
+ 			wordContainer.appendChild(wordTextContainer);
+-			mainWordEl.appendChild(rubyWordEl);
+-			mainWordEl.appendChild(wordContainer);
++			maskRoot.appendChild(rubyWordEl);
++			maskRoot.appendChild(wordContainer);
+ 		}
+ 
+ 		const displayWord = word.word;
+@@ -336,9 +331,7 @@
+ 			mainWordEl.classList.add(styles.emphasize);
+ 			const trimmedWord = displayWord.trim();
+ 
+-			const offsets = new Set(
+-				this.enableTextAutospace ? getTextAutospaceOffsets(trimmedWord) : [],
+-			);
++			const offsets = new Set(this.enableTextAutospace ? getTextAutospaceOffsets(trimmedWord) : []);
+ 			for (const { segment, index } of textGraphemes(trimmedWord)) {
+ 				const charEl = document.createElement("span");
+ 				charEl.textContent = segment;
+@@ -351,12 +344,7 @@
+ 		} else {
+ 			if (this.lineHasRomanWords) {
+ 				const wordEl = document.createElement("span");
+-				appendTextWithAutospace(
+-					wordEl,
+-					displayWord.trim(),
+-					false,
+-					this.enableTextAutospace,
+-				);
++				appendTextWithAutospace(wordEl, displayWord.trim(), false, this.enableTextAutospace);
+ 				wordTextContainer.appendChild(wordEl);
+ 			} else if (romanWord.length === 0) {
+ 				appendTextWithAutospace(
+@@ -368,16 +356,26 @@
+ 			}
+ 		}
+ 
++		let romanMaskElement: HTMLElement | undefined;
+ 		if (this.lineHasRomanWords) {
+ 			const romanWordEl = document.createElement("span");
+-			romanWordEl.textContent = romanWord.length > 0 ? romanWord : "\u00A0";
+ 			romanWordEl.classList.add(styles.romanWord);
+-			wordContainer.appendChild(romanWordEl);
++			if (separateMasks) {
++				romanMaskElement = document.createElement("div");
++				romanMaskElement.classList.add("amll-roman-mask");
++				romanMaskElement.textContent = romanWord.length > 0 ? romanWord : "\u00A0";
++				romanWordEl.appendChild(romanMaskElement);
++			} else {
++				romanWordEl.textContent = romanWord.length > 0 ? romanWord : "\u00A0";
++			}
++			(separateMasks ? mainWordEl : wordContainer).appendChild(romanWordEl);
+ 		}
+ 
+ 		const realWord: RealWord = {
+ 			...word,
+ 			mainElement: mainWordEl,
++			mainMaskElement,
++			romanMaskElement,
+ 			subElements: subElements,
+ 			elementAnimations: shouldEmphasize
+ 				? []
+@@ -386,6 +384,20 @@
+ 							word: floatWord,
+ 							lineStartTime: this.lyricLine.startTime,
+ 							isBG: this.lyricLine.isBG,
++							intensity:
++								{
++									low: 0.5,
++									medium: 1,
++									high: 1.5,
++									"very-high": 2,
++									extreme: 3,
++								}[
++									(
++										this.lyricLine as LyricLine & {
++											__amllFloatAnimationIntensity?: string;
++										}
++									).__amllFloatAnimationIntensity ?? ""
++								] ?? 1,
+ 						}),
+ 					],
+ 			width: 0,
+@@ -429,16 +441,22 @@
+ 			} as LyricWord,
+ 		);
+ 
+-		const emp = isCJK(merged.word)
+-			? chunk.some((word) => LyricLineBase.shouldEmphasize(word))
+-			: LyricLineBase.shouldEmphasize(merged);
++		const hookLine = this.lyricLine as typeof this.lyricLine & {
++			__amllDisableEmphasize?: boolean;
++			__amllDisableCjkEmphasis?: boolean;
++		};
++		const disableEmphasize = hookLine.__amllDisableEmphasize === true;
++		const disableCjkEmphasize = hookLine.__amllDisableCjkEmphasis === true && isCJK(merged.word);
++		const emp =
++			disableEmphasize || disableCjkEmphasize
++				? false
++				: isCJK(merged.word)
++					? chunk.some((word) => LyricLineBase.shouldEmphasize(word))
++					: LyricLineBase.shouldEmphasize(merged);
+ 
+ 		const wrapperWordEl = document.createElement("span");
+ 		wrapperWordEl.classList.add(styles.emphasizeWrapper);
+-		if (
+-			this.enableTextAutospace &&
+-			needsTextAutospace(previousText, merged.word)
+-		) {
++		if (this.enableTextAutospace && needsTextAutospace(previousText, merged.word)) {
+ 			wrapperWordEl.classList.add(styles.textAutospaceBefore);
+ 		}
+ 
+@@ -453,10 +471,7 @@
+ 			}
+ 
+ 			const realWord = this.createWord(word, emp, emp ? merged : word);
+-			if (
+-				this.enableTextAutospace &&
+-				needsTextAutospace(previousWord, word.word)
+-			) {
++			if (this.enableTextAutospace && needsTextAutospace(previousWord, word.word)) {
+ 				realWord.mainElement.classList.add(styles.textAutospaceBefore);
+ 			}
+ 			previousWord = word.word;
+@@ -471,15 +486,11 @@
+ 
+ 		if (emp && this.splittedWords.length > 0) {
+ 			const lastWordOfChunk = this.splittedWords[this.splittedWords.length - 1];
+-			const rubyCharCount = chunk.reduce(
+-				(total, word) => total + this.getRubyCharCount(word),
+-				0,
+-			);
++			const rubyCharCount = chunk.reduce((total, word) => total + this.getRubyCharCount(word), 0);
+ 
+ 			const lineWords = this.lyricLine.words;
+ 			const isLastWord =
+-				lineWords.length > 0 &&
+-				merged.word.includes(lineWords[lineWords.length - 1].word);
++				lineWords.length > 0 && merged.word.includes(lineWords[lineWords.length - 1].word);
+ 
+ 			lastWordOfChunk.elementAnimations.push(
+ 				...createEmphasizeAnimation({
+@@ -500,7 +511,7 @@
+ 
+ 	override onLineSizeChange(size: [number, number]): void {
+ 		if (
+-			this.maskAnimator &&
++			this.maskAnimators.length > 0 &&
+ 			this.lastLineSize &&
+ 			this.lastLineSize[0] === size[0] &&
+ 			this.lastLineSize[1] === size[1]
+@@ -508,8 +519,7 @@
+ 			return;
+ 		}
+ 
+-		const isInitialObservation =
+-			!this.lastLineSize && Boolean(this.maskAnimator);
++		const isInitialObservation = !this.lastLineSize && this.maskAnimators.length > 0;
+ 		this.lastLineSize = [size[0], size[1]];
+ 
+ 		if (isInitialObservation) {
+@@ -523,9 +533,7 @@
+ 		if (words.length === 0) return;
+ 
+ 		const firstEl = words[0].mainElement;
+-		const padding = firstEl
+-			? Number.parseFloat(getComputedStyle(firstEl).paddingLeft)
+-			: 0;
++		const padding = firstEl ? Number.parseFloat(getComputedStyle(firstEl).paddingLeft) : 0;
+ 
+ 		for (const word of words) {
+ 			const el = word.mainElement;
+@@ -545,13 +553,18 @@
+ 	 * @param containerWidth 换行平衡所使用的容器可用宽度
+ 	 * @param maxEndTime 遮罩动画时间轴的结束时间
+ 	 */
+-	private computeMaskSignature(
+-		containerWidth: number,
+-		maxEndTime: number,
+-	): string {
++	private computeMaskSignature(containerWidth: number, maxEndTime: number): string {
+ 		// 签名输入项包含各词尺寸、行时间戳以及换行平衡所使用的容器宽度，其中任意一项变更均需触发重建
+ 		// 引入容器宽度旨在避免外部锁定字号时，容器变宽无法正常触发重建流程
+-		let signature = `${this.splittedWords.length}|${this.lyricLine.startTime}|${maxEndTime}|${containerWidth}|${this.lyricPlayer.getWordFadeWidth()}|${this.lyricPlayer.supportMaskImage ? 1 : 0}|${this.lyricPlayer._getIsNonDynamic() ? 1 : 0}`;
++		const hookLine = this.lyricLine as LyricLine & {
++			__amllIndependentMainWordMask?: true;
++			__amllIndependentRomanWordMask?: true;
++			__amllDisableWordHighlight?: true;
++		};
++		const independent =
++			hookLine.__amllIndependentMainWordMask === true ||
++			hookLine.__amllIndependentRomanWordMask === true;
++		let signature = `${this.splittedWords.length}|${this.lyricLine.startTime}|${maxEndTime}|${containerWidth}|${this.lyricPlayer.getWordFadeWidth()}|${this.lyricPlayer.supportMaskImage ? 1 : 0}|${this.lyricPlayer._getIsNonDynamic() ? 1 : 0}|${independent ? 1 : 0}|${hookLine.__amllDisableWordHighlight === true ? 1 : 0}`;
+ 		for (const word of this.splittedWords) {
+ 			signature += `|${word.width},${word.height},${word.padding}`;
+ 		}
+@@ -589,7 +602,7 @@
+ 
+ 		// 若输入未发生变更，则直接复用现有动画。由于销毁并重建逐词动画是该调用路径上性能开销最高的操作，
+ 		// 且首次显示后的尺寸监听回调所传入的参数与初次完全相同，因此复用机制可避免不必要的重建。
+-		if (this.maskAnimator && signature === this.maskSignature) return false;
++		if (this.maskAnimators.length > 0 && signature === this.maskSignature) return false;
+ 		this.maskSignature = signature;
+ 
+ 		if (this.balancer && LyricLineBase.wordSegmenter) {
+@@ -601,16 +614,88 @@
+ 			);
+ 		}
+ 
+-		this.maskAnimator?.dispose();
+-
+-		this.maskAnimator = createLineMaskAnimator(this.splittedWords, {
++		for (const animator of this.maskAnimators) animator.dispose();
++		this.maskAnimators = [];
++
++		const hookLine = this.lyricLine as LyricLine & {
++			__amllIndependentMainWordMask?: true;
++			__amllIndependentRomanWordMask?: true;
++			__amllDisableWordHighlight?: true;
++		};
++		if (hookLine.__amllDisableWordHighlight === true) {
++			for (const word of this.splittedWords) {
++				for (const element of [word.mainElement, word.mainMaskElement, word.romanMaskElement]) {
++					if (!element) continue;
++					for (const prop of [
++						"mask-image",
++						"-webkit-mask-image",
++						"mask-position",
++						"-webkit-mask-position",
++						"mask-size",
++						"-webkit-mask-size",
++						"mask-repeat",
++						"-webkit-mask-repeat",
++					]) {
++						element.style.removeProperty(prop);
++					}
++				}
++			}
++			return true;
++		}
++
++		const context = {
+ 			lineStartTime: this.lyricLine.startTime,
+ 			lineEndTime: maxEndTime,
+ 			wordFadeWidth: this.lyricPlayer.getWordFadeWidth(),
+ 			supportMaskImage: this.lyricPlayer.supportMaskImage,
+-		});
+-
+-		this.maskAnimator.apply();
++		};
++		const independent =
++			hookLine.__amllIndependentMainWordMask === true ||
++			hookLine.__amllIndependentRomanWordMask === true;
++		if (independent) {
++			const layers: RealWord[][] = [];
++			const mainWords = this.splittedWords.filter((word) => word.mainMaskElement);
++			if (mainWords.length > 0) {
++				layers.push(
++					mainWords.map((word) => {
++						const element = word.mainMaskElement!;
++						const padding = Number.parseFloat(getComputedStyle(element).paddingLeft) || 0;
++						return {
++							...word,
++							mainElement: element,
++							width: element.clientWidth - padding * 2,
++							height: element.clientHeight - padding * 2,
++							padding,
++						};
++					}),
++				);
++			}
++			const romanWords = this.splittedWords.filter((word) => word.romanMaskElement);
++			if (romanWords.length > 0) {
++				layers.push(
++					romanWords.map((word) => {
++						const element = word.romanMaskElement!;
++						const padding = Number.parseFloat(getComputedStyle(element).paddingLeft) || 0;
++						return {
++							...word,
++							mainElement: element,
++							width: element.clientWidth - padding * 2,
++							height: element.clientHeight - padding * 2,
++							padding,
++						};
++					}),
++				);
++			}
++			for (const words of layers) {
++				const animator = createLineMaskAnimator(words, context);
++				animator.apply();
++				this.maskAnimators.push(animator);
++			}
++		} else {
++			const animator = createLineMaskAnimator(this.splittedWords, context);
++			animator.apply();
++			this.maskAnimators.push(animator);
++		}
+ 		this.brightness.sync(true);
+ 
+ 		if (this.isEnabled) {
+@@ -634,10 +719,7 @@
+ 		}
+ 
+ 		this.renderMode = mode;
+-		this.element.classList.toggle(
+-			styles.gradientMask,
+-			mode === LyricLineRenderMode.GRADIENT,
+-		);
++		this.element.classList.toggle(styles.gradientMask, mode === LyricLineRenderMode.GRADIENT);
+ 	}
+ 
+ 	override setTransform(
+@@ -704,8 +786,8 @@
+ 	 * 此时无法立刻测量出有效几何信息，只能待元素重新回到文档后重建。
+ 	 */
+ 	private invalidateMask(): void {
+-		this.maskAnimator?.dispose();
+-		this.maskAnimator = undefined;
++		for (const animator of this.maskAnimators) animator.dispose();
++		this.maskAnimators = [];
+ 		this.maskSignature = "";
+ 		this.lastLineSize = undefined;
+ 	}
+--- a/vendor/applemusic-like-lyrics/src/lyric-player/dom/animation/float/index.ts
++++ b/vendor/applemusic-like-lyrics/src/lyric-player/dom/animation/float/index.ts
+@@ -20,6 +20,7 @@
+ 	 * 背景歌词行的上浮位移幅度是主歌词行的两倍
+ 	 */
+ 	isBG: boolean;
++	intensity?: number;
+ }
+ 
+ /**
+@@ -37,12 +38,12 @@
+ 	wordEl: HTMLElement,
+ 	options: FloatAnimationOptions,
+ ): Animation {
+-	const { word, lineStartTime, isBG } = options;
++	const { word, lineStartTime, isBG, intensity = 1 } = options;
+ 
+ 	const delay = word.startTime - lineStartTime;
+ 	const duration = Math.max(1000, word.endTime - word.startTime);
+ 
+-	let up = 0.05;
++	let up = 0.05 * intensity;
+ 	if (isBG) {
+ 		up *= 2;
+ 	}
+--- a/vendor/applemusic-like-lyrics/src/styles/index.css
++++ b/vendor/applemusic-like-lyrics/src/styles/index.css
+@@ -34,3 +34,9 @@
+ 		--amll-lp-line-padding-x: 0;
+ 	}
+ }
++
++/* SPlayer 私有遮罩层：保持单词宽度参与布局与测量 */
++.amll-main-mask,
++.amll-roman-mask {
++	display: inline-block;
++}
+--- a/vendor/applemusic-like-lyrics/src/utils/lyric-split-words.ts
++++ b/vendor/applemusic-like-lyrics/src/utils/lyric-split-words.ts
+@@ -15,15 +15,14 @@
+  */
+ export function chunkAndSplitLyricWords(
+ 	words: LyricWord[],
++	skipWhitespaceSplit = false,
+ ): (LyricWord | LyricWord[])[] {
+ 	const result: (LyricWord | LyricWord[])[] = [];
+ 	let currentGroup: LyricWord[] = [];
+ 
+ 	const flushGroup = () => {
+ 		if (currentGroup.length > 0) {
+-			result.push(
+-				currentGroup.length === 1 ? currentGroup[0] : [...currentGroup],
+-			);
++			result.push(currentGroup.length === 1 ? currentGroup[0] : [...currentGroup]);
+ 			currentGroup = [];
+ 		}
+ 	};
+@@ -89,6 +88,24 @@
+ 			continue;
+ 		}
+ 
++		if (skipWhitespaceSplit) {
++			const trailingWhitespace = w.word.match(/\s+$/)?.[0] ?? "";
++			processAtom({
++				...w,
++				word: w.word.slice(0, w.word.length - trailingWhitespace.length),
++			});
++			if (trailingWhitespace) {
++				processAtom({
++					word: trailingWhitespace,
++					romanWord: "",
++					startTime: w.endTime,
++					endTime: w.endTime,
++					obscene: obscene,
++				});
++			}
++			continue;
++		}
++
+ 		const parts = w.word.split(SPLIT_WHITESPACE_RE).filter((p) => p.length > 0);
+ 
+ 		const totalLength = w.word.replace(WHITESPACE_RE, "").length || 1;
+@@ -101,11 +118,8 @@
+ 			.filter((p) => p.length > 0);
+ 		const romanTrimmed = romanWord.trim();
+ 		const romanParts =
+-			romanTrimmed.length > 0
+-				? romanTrimmed.split(/\s+/).filter((p) => p.length > 0)
+-				: [];
+-		const isMatched =
+-			wordParts.length > 0 && wordParts.length === romanParts.length;
++			romanTrimmed.length > 0 ? romanTrimmed.split(/\s+/).filter((p) => p.length > 0) : [];
++		const isMatched = wordParts.length > 0 && wordParts.length === romanParts.length;
+ 
+ 		let currentOffset = 0;
+ 		let nonSpaceIndex = 0;
+--- a/vendor/applemusic-like-lyrics/src/utils/optimize-lyric.ts
++++ b/vendor/applemusic-like-lyrics/src/utils/optimize-lyric.ts
+@@ -13,6 +13,11 @@
+  */
+ function normalizeSpaces(lines: LyricLine[]) {
+ 	for (const line of lines) {
++		if (
++			(line as LyricLine & { __amllSkipWhitespaceSplit?: true }).__amllSkipWhitespaceSplit === true
++		) {
++			continue;
++		}
+ 		for (const word of line.words) {
+ 			word.word = word.word.replace(/\s+/g, " ");
+ 		}
+@@ -75,20 +80,14 @@
+ 
+ 		const nextLine = lines[i + 1];
+ 		if (nextLine?.isBG) {
+-			const allWords = [...line.words, ...nextLine.words].filter(
+-				(w) => w.word.trim().length > 0,
+-			);
++			const allWords = [...line.words, ...nextLine.words].filter((w) => w.word.trim().length > 0);
+ 
+ 			const finalStart = Math.min(
+ 				line.startTime,
+ 				nextLine.startTime,
+ 				...allWords.map((w) => w.startTime),
+ 			);
+-			const finalEnd = Math.max(
+-				line.endTime,
+-				nextLine.endTime,
+-				...allWords.map((w) => w.endTime),
+-			);
++			const finalEnd = Math.max(line.endTime, nextLine.endTime, ...allWords.map((w) => w.endTime));
+ 
+ 			line.startTime = finalStart;
+ 			line.endTime = finalEnd;
+@@ -146,10 +145,7 @@
+  * | 重叠 ≤ 100ms 或 ≤ 下一行时长的 10%         | 无意 |
+  *
+  */
+-function cleanUnintentionalOverlaps(
+-	lines: LyricLine[],
+-	syncBackgroundLines: boolean,
+-) {
++function cleanUnintentionalOverlaps(lines: LyricLine[], syncBackgroundLines: boolean) {
+ 	for (let i = 0; i < lines.length - 1; i++) {
+ 		const line = lines[i];
+ 		if (line.isBG) continue;
+@@ -262,14 +258,10 @@
+ 		// 为连续重叠的歌词行都加到一个组里，以便接下来不重叠的歌词行看到的是整个组的时间边界而不仅限于上一行的边界
+ 		if (hasPrevLine) {
+ 			const overlapsPrevGroup =
+-				originalStartTime < prevMainGroupEndTime &&
+-				originalEndTime > prevMainGroupStartTime;
++				originalStartTime < prevMainGroupEndTime && originalEndTime > prevMainGroupStartTime;
+ 
+ 			if (overlapsPrevGroup) {
+-				prevMainGroupStartTime = Math.min(
+-					prevMainGroupStartTime,
+-					originalStartTime,
+-				);
++				prevMainGroupStartTime = Math.min(prevMainGroupStartTime, originalStartTime);
+ 				prevMainGroupEndTime = Math.max(prevMainGroupEndTime, originalEndTime);
+ 			} else {
+ 				prevMainGroupStartTime = originalStartTime;
+@@ -309,10 +301,7 @@
+  * @param lines 歌词行数组
+  * @param options 优化的可选配置，除已弃用选项外默认全部开启
+  */
+-export function optimizeLyricLines(
+-	lines: LyricLine[],
+-	options?: OptimizeLyricOptions,
+-): void {
++export function optimizeLyricLines(lines: LyricLine[], options?: OptimizeLyricOptions): void {
+ 	const config = { ...DEFAULT_OPTIMIZE_OPTIONS, ...options };
+ 	const syncBackgroundLines = config.syncMainAndBackgroundLines ?? true;
+ 

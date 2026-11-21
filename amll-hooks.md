@@ -215,3 +215,26 @@ Browser/GPU/Tab 工作集分别约为 102/94/93 MB 与 102/98/93 MB；
 审计报告 `AUDIT_REPORT.md`、`audit/` 及对应的临时忽略项已清理。
 本次补丁编辑目录、测试脚本、截图、夹具用户数据和日志在验证后删除，
 保留正式依赖补丁、回归测试和此维护说明。
+
+## 2026-11-22 AMLL 0.7.2 内核与私有钩子
+
+- vendor 内核已同步 `zhr166/applemusic-like-lyrics` main 的 0.7.2
+- 私有钩子不再直接改 vendor 源文件维护，统一收进补丁：
+  `patches/amll-private-hooks-0.7.2.patch`
+- 已恢复的钩子：
+  - `__amllIndependentMainWordMask` / `__amllIndependentRomanWordMask`
+  - `__amllDisableWordHighlight`
+  - `__amllDisableEmphasize` / `__amllDisableCjkEmphasis`
+  - `__amllFloatAnimationIntensity`
+  - `__amllSkipWhitespaceSplit`
+- 遮罩改为双 animator：主文字与发音各一层，共享播放器的暂停、seek、隐藏恢复与销毁
+- 新增全局类 `.amll-main-mask` / `.amll-roman-mask`，避免遮罩层改变原词布局
+
+### 同步新内核流程
+
+1. 复制内核 `packages/core/src` 到 `vendor/applemusic-like-lyrics/src`
+2. 把 `#interfaces` / `#utils` / `#styles` / `#lyric` 别名和 `.ts` 后缀重写为相对路径
+3. `git apply patches/amll-private-hooks-0.7.2.patch`
+4. 运行 `vue-tsc` 与 `electron-vite build`
+
+补丁路径基于重写后的 vendor 源码；升级内核时若 hunk 冲突，按 `amll-hooks.md` 的钩子协议重做补丁并更新文件名版本号。

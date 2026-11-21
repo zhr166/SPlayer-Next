@@ -13,6 +13,11 @@ const DEFAULT_OPTIMIZE_OPTIONS: OptimizeLyricOptions = {
  */
 function normalizeSpaces(lines: LyricLine[]) {
 	for (const line of lines) {
+		if (
+			(line as LyricLine & { __amllSkipWhitespaceSplit?: true }).__amllSkipWhitespaceSplit === true
+		) {
+			continue;
+		}
 		for (const word of line.words) {
 			word.word = word.word.replace(/\s+/g, " ");
 		}
@@ -75,20 +80,14 @@ function syncMainAndBackgroundLines(lines: LyricLine[]) {
 
 		const nextLine = lines[i + 1];
 		if (nextLine?.isBG) {
-			const allWords = [...line.words, ...nextLine.words].filter(
-				(w) => w.word.trim().length > 0,
-			);
+			const allWords = [...line.words, ...nextLine.words].filter((w) => w.word.trim().length > 0);
 
 			const finalStart = Math.min(
 				line.startTime,
 				nextLine.startTime,
 				...allWords.map((w) => w.startTime),
 			);
-			const finalEnd = Math.max(
-				line.endTime,
-				nextLine.endTime,
-				...allWords.map((w) => w.endTime),
-			);
+			const finalEnd = Math.max(line.endTime, nextLine.endTime, ...allWords.map((w) => w.endTime));
 
 			line.startTime = finalStart;
 			line.endTime = finalEnd;
@@ -146,10 +145,7 @@ function sortLyricLines(lines: LyricLine[]) {
  * | 重叠 ≤ 100ms 或 ≤ 下一行时长的 10%         | 无意 |
  *
  */
-function cleanUnintentionalOverlaps(
-	lines: LyricLine[],
-	syncBackgroundLines: boolean,
-) {
+function cleanUnintentionalOverlaps(lines: LyricLine[], syncBackgroundLines: boolean) {
 	for (let i = 0; i < lines.length - 1; i++) {
 		const line = lines[i];
 		if (line.isBG) continue;
@@ -262,14 +258,10 @@ function tryAdvanceStartTime(lines: LyricLine[], syncBackgroundLines: boolean) {
 		// 为连续重叠的歌词行都加到一个组里，以便接下来不重叠的歌词行看到的是整个组的时间边界而不仅限于上一行的边界
 		if (hasPrevLine) {
 			const overlapsPrevGroup =
-				originalStartTime < prevMainGroupEndTime &&
-				originalEndTime > prevMainGroupStartTime;
+				originalStartTime < prevMainGroupEndTime && originalEndTime > prevMainGroupStartTime;
 
 			if (overlapsPrevGroup) {
-				prevMainGroupStartTime = Math.min(
-					prevMainGroupStartTime,
-					originalStartTime,
-				);
+				prevMainGroupStartTime = Math.min(prevMainGroupStartTime, originalStartTime);
 				prevMainGroupEndTime = Math.max(prevMainGroupEndTime, originalEndTime);
 			} else {
 				prevMainGroupStartTime = originalStartTime;
@@ -309,10 +301,7 @@ export function areOptimizeOptionsEqual(
  * @param lines 歌词行数组
  * @param options 优化的可选配置，除已弃用选项外默认全部开启
  */
-export function optimizeLyricLines(
-	lines: LyricLine[],
-	options?: OptimizeLyricOptions,
-): void {
+export function optimizeLyricLines(lines: LyricLine[], options?: OptimizeLyricOptions): void {
 	const config = { ...DEFAULT_OPTIMIZE_OPTIONS, ...options };
 	const syncBackgroundLines = config.syncMainAndBackgroundLines ?? true;
 
