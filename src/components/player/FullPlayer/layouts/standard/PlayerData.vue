@@ -353,7 +353,7 @@ const alignItems = computed(() => {
       <button
         type="button"
         class="cursor-pointer border-0 bg-transparent p-0 font-inherit text-inherit transition-colors hover:text-cover"
-        @click="motionCoverManager.show(displayTrack.title)"
+        @click="motionCoverManager.show(displayTrack, displayTrack.title)"
       >
         {{ t("motionCoverManager.open") }}
       </button>

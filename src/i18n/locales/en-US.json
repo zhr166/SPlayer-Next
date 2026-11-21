@@ -1008,7 +1008,28 @@
       "appleTrack": "Apple track",
       "collection": "Apple album",
       "other": "Other"
-    }
+    },
+    "tabs": {
+      "cache": "Cached",
+      "search": "Search"
+    },
+    "manualActive": "Manually set",
+    "restoreAuto": "Restore auto",
+    "search": "Search",
+    "searchFailed": "Search failed",
+    "searchEmpty": "No results, try another keyword",
+    "sources": {
+      "ncm": "NetEase",
+      "am": "Apple Music"
+    },
+    "preview": "Preview",
+    "previewFailed": "Preview failed",
+    "previewAmHint": "Apple Music preview URL copied; the video downloads after applying",
+    "apply": "Apply",
+    "applied": "Dynamic cover applied",
+    "applyFailed": "Operation failed",
+    "clearManualDone": "Restored automatic matching",
+    "noTrack": "Play a track first"
   },
   "settings": {
     "title": "Settings",

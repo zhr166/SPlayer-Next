@@ -1008,7 +1008,28 @@
       "appleTrack": "Apple 曲目",
       "collection": "Apple 专辑",
       "other": "其他"
-    }
+    },
+    "tabs": {
+      "cache": "缓存记录",
+      "search": "搜索封面"
+    },
+    "manualActive": "已手动指定",
+    "restoreAuto": "恢复自动",
+    "search": "搜索",
+    "searchFailed": "搜索失败",
+    "searchEmpty": "没有搜索结果，换个关键词试试",
+    "sources": {
+      "ncm": "网易云",
+      "am": "Apple Music"
+    },
+    "preview": "预览",
+    "previewFailed": "预览失败",
+    "previewAmHint": "Apple Music 预览地址已复制，应用后会下载缓存",
+    "apply": "应用",
+    "applied": "已应用动态封面",
+    "applyFailed": "操作失败",
+    "clearManualDone": "已恢复自动匹配",
+    "noTrack": "请先播放一首歌"
   },
   "settings": {
     "title": "设置",
