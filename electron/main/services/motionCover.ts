@@ -927,6 +927,45 @@ export const resolveMotionCoverCandidate = async (
       if ((err as Error).name === "AbortError") throw err;
     }
   }
+
+  // 同一专辑 ID 在主要区都没有时，按名称在其它区重新搜索匹配
+  const term = `${candidate.title} ${candidate.artist}`.trim();
+  if (!term) return null;
+  const matchedCollections = new Set<string>();
+  for (const storefront of AM_VIDEO_STOREFRONTS) {
+    try {
+      const songs = await searchItunes(term, storefront, controller.signal);
+      const collections = new Map<number, string | undefined>();
+      for (const song of songs) {
+        if (!song.collectionId) continue;
+        const titleMatches =
+          normalize(song.trackName ?? "").includes(normalize(candidate.title)) ||
+          normalize(candidate.title).includes(normalize(song.trackName ?? ""));
+        if (candidate.album) {
+          if (!isSameAlbumName(candidate.album, song.collectionName)) continue;
+        } else if (!titleMatches) {
+          continue;
+        }
+        collections.set(song.collectionId, song.collectionName);
+      }
+      for (const collectionId of [...collections.keys()].slice(0, 3)) {
+        const key = `${storefront}:${collectionId}`;
+        if (matchedCollections.has(key)) continue;
+        matchedCollections.add(key);
+        try {
+          const info = await fetchAlbumInfo(collectionId, storefront, controller.signal);
+          if (info.video) {
+            motionCoverLog.info(`${candidate.title}：跨区按名称命中 ${storefront}/${collectionId}`);
+            return info.video;
+          }
+        } catch (err) {
+          if ((err as Error).name === "AbortError") throw err;
+        }
+      }
+    } catch (err) {
+      if ((err as Error).name === "AbortError") throw err;
+    }
+  }
   return null;
 };
 
