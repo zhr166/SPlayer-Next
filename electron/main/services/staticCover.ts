@@ -6,7 +6,12 @@
 
 import { net } from "electron";
 import { callNetease } from "@main/apis/netease";
-import { getStaticCoverManual, setStaticCoverManual } from "@main/database/staticCoverManual";
+import {
+  clearStaticCoverManual,
+  getStaticCoverManual,
+  setStaticCoverManual,
+} from "@main/database/staticCoverManual";
+import { getDb } from "@main/database/index";
 import type {
   StaticCoverManualRecord,
   StaticCoverSearchCandidate,
@@ -119,4 +124,69 @@ export const applyStaticCover = (
   };
   setStaticCoverManual(track, record);
   return record;
+};
+
+/**
+ * 恢复静态封面，并修正播放历史里被写成手动图的记录
+ * @param track - 目标曲目
+ * @returns 可信的原始封面，未指定手动封面时为 null
+ */
+export const restoreStaticCover = (
+  track: Track,
+): { cover?: string; coverOriginal?: string } | null => {
+  const record = getStaticCoverManual(track);
+  if (!record) return null;
+  const manualUrls = new Set([record.thumbUrl, record.url].filter(Boolean));
+  let trusted: { cover?: string; coverOriginal?: string } | null = null;
+
+  if (record.originalCover && !manualUrls.has(record.originalCover)) {
+    trusted = {
+      cover: record.originalCover,
+      coverOriginal:
+        record.originalCoverOriginal && !manualUrls.has(record.originalCoverOriginal)
+          ? record.originalCoverOriginal
+          : record.originalCover,
+    };
+  }
+
+  // 记录的原始封面也可能被旧版本写成了手动图，从播放历史里找真正的原图
+  const db = getDb();
+  const rows = db
+    .prepare(
+      "SELECT id, track_json FROM play_history WHERE track_id = ? AND source = ? ORDER BY id DESC LIMIT 50",
+    )
+    .all(track.id, track.source) as { id: number; track_json: string | null }[];
+  const parsed = rows.flatMap((row) => {
+    if (!row.track_json) return [];
+    try {
+      return [{ id: row.id, track: JSON.parse(row.track_json) as Track }];
+    } catch {
+      return [];
+    }
+  });
+  if (!trusted) {
+    const found = parsed.find((row) => row.track.cover && !manualUrls.has(row.track.cover));
+    if (found) {
+      trusted = {
+        cover: found.track.cover,
+        coverOriginal: found.track.coverOriginal ?? found.track.cover,
+      };
+    }
+  }
+
+  const fallback = trusted;
+  // 把历史里被手动图覆盖的记录改回真实原图
+  const update = db.prepare("UPDATE play_history SET track_json = ? WHERE id = ?");
+  if (!fallback) {
+    clearStaticCoverManual(track);
+    return null;
+  }
+  for (const row of parsed) {
+    const cover = row.track.cover;
+    if (!cover || !manualUrls.has(cover)) continue;
+    update.run(JSON.stringify({ ...row.track, ...fallback }), row.id);
+  }
+
+  clearStaticCoverManual(track);
+  return fallback;
 };

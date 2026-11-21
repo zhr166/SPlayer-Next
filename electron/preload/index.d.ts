@@ -131,6 +131,7 @@ declare global {
         ) => Promise<StaticCoverManualRecord>;
         getStatic: (track: Track) => Promise<StaticCoverManualRecord | null>;
         clearStatic: (track: Track) => Promise<void>;
+        restoreStatic: (track: Track) => Promise<{ cover?: string; coverOriginal?: string } | null>;
       };
       theme: {
         pickBackgroundImage: () => Promise<string | null>;

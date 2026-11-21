@@ -814,6 +814,9 @@ const api = {
       ipcRenderer.invoke("staticCover:get", track),
     // 清除手动静态封面
     clearStatic: (track: Track): Promise<void> => ipcRenderer.invoke("staticCover:clear", track),
+    // 恢复静态封面并修正历史残留
+    restoreStatic: (track: Track): Promise<{ cover?: string; coverOriginal?: string } | null> =>
+      ipcRenderer.invoke("staticCover:restore", track),
   },
   theme: {
     // 弹出文件选择框

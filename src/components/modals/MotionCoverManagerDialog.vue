@@ -15,6 +15,7 @@ import { useMotionCoverManagerDialog } from "@/composables/useMotionCoverManager
 import { useMediaStore } from "@/stores/media";
 import { useStatusStore } from "@/stores/status";
 import { useSettingsStore } from "@/stores/settings";
+import { useHistoryStore } from "@/stores/history";
 import { extractColorFromUrl } from "@/utils/color";
 
 const { t } = useI18n();
@@ -22,6 +23,7 @@ const { copy } = useCopyText();
 const media = useMediaStore();
 const status = useStatusStore();
 const settings = useSettingsStore();
+const history = useHistoryStore();
 const manager = useMotionCoverManagerDialog();
 const { open, keyword } = manager;
 
@@ -210,6 +212,7 @@ const applyCandidate = async (candidate: MotionCoverSearchCandidate): Promise<vo
     // 静态封面优先级更高，已有手动静态图时只在无静态记录时更新取色
     if (!staticManual.value && candidate.cover) {
       media.track = { ...toRaw(track), cover: candidate.cover, coverOriginal: candidate.cover };
+      history.patchCover(toRaw(track), candidate.cover, candidate.cover);
       extractColorFromUrl(candidate.cover);
     }
     toast.success(t("motionCoverManager.applied"));
@@ -245,6 +248,7 @@ const applyCandidate = async (candidate: MotionCoverSearchCandidate): Promise<vo
       if (!isSameTrack(track)) return;
       staticManual.value = record;
       media.track = { ...toRaw(track), cover: record.thumbUrl, coverOriginal: record.url };
+      history.patchCover(toRaw(track), record.thumbUrl, record.url);
       extractColorFromUrl(record.url);
       toast.success(t("motionCoverManager.fallbackStatic"));
     } catch {
@@ -283,6 +287,7 @@ const applyStaticCandidate = async (candidate: StaticCoverSearchCandidate): Prom
     if (!isSameTrack(track)) return;
     staticManual.value = record;
     media.track = { ...toRaw(track), cover: record.thumbUrl, coverOriginal: record.url };
+    history.patchCover(toRaw(track), record.thumbUrl, record.url);
     extractColorFromUrl(record.url);
     toast.success(t("motionCoverManager.applied"));
   } catch {
@@ -294,52 +299,29 @@ const applyStaticCandidate = async (candidate: StaticCoverSearchCandidate): Prom
 const restoreStaticOriginal = async (): Promise<void> => {
   const track = currentTrack.value;
   if (!track) return;
-  const record = staticManual.value;
   try {
-    await window.api.motionCover.clearStatic(track);
+    const restored = await window.api.motionCover.restoreStatic(track);
     if (!isSameTrack(track)) return;
     staticManual.value = null;
-    // 旧记录可能把手动图误存成原版，这时用队列里的原始曲目兜底
-    const rawTrack =
-      status.currentTrack &&
-      `${status.currentTrack.source}:${status.currentTrack.id}` === `${track.source}:${track.id}`
-        ? status.currentTrack
-        : null;
-    const storedCover =
-      record?.originalCover &&
-      record.originalCover !== record.thumbUrl &&
-      record.originalCover !== record.url
-        ? record.originalCover
-        : null;
-    const storedCoverOriginal =
-      record?.originalCoverOriginal &&
-      record.originalCoverOriginal !== record.url &&
-      record.originalCoverOriginal !== record.thumbUrl
-        ? record.originalCoverOriginal
-        : null;
-    // 回退优先级：手动动态封面的静态图 > 可信的原始封面 > 队列原始曲目
+    // 优先级：手动动态封面的静态图 > 服务端找回的真实原图 > 队列原始曲目
+    let cover: string | undefined;
+    let coverOriginal: string | undefined;
     if (manual.value?.cover) {
-      media.track = {
-        ...toRaw(track),
-        cover: manual.value.cover,
-        coverOriginal: manual.value.cover,
-      };
-      extractColorFromUrl(manual.value.cover);
+      cover = manual.value.cover;
+      coverOriginal = manual.value.cover;
+    } else if (restored?.cover) {
+      cover = restored.cover;
+      coverOriginal = restored.coverOriginal ?? restored.cover;
     } else {
-      media.track = {
-        ...toRaw(track),
-        cover: storedCover ?? rawTrack?.cover ?? track.cover,
-        coverOriginal: storedCoverOriginal ?? rawTrack?.coverOriginal ?? track.coverOriginal,
-      };
-      extractColorFromUrl(
-        storedCoverOriginal ??
-          storedCover ??
-          rawTrack?.coverOriginal ??
-          rawTrack?.cover ??
-          track.cover ??
-          null,
-      );
+      const raw = status.currentTrack;
+      const sameRaw =
+        raw && `${raw.source}:${raw.id}` === `${track.source}:${track.id}` ? raw : null;
+      cover = sameRaw?.cover ?? track.cover;
+      coverOriginal = sameRaw?.coverOriginal ?? track.coverOriginal;
     }
+    media.track = { ...toRaw(track), cover, coverOriginal };
+    history.patchCover(toRaw(track), cover, coverOriginal);
+    extractColorFromUrl(coverOriginal ?? cover ?? null);
     toast.success(t("motionCoverManager.clearManualDone"));
   } catch {
     toast.error(t("motionCoverManager.applyFailed"));
@@ -362,6 +344,7 @@ const restoreAuto = async (): Promise<void> => {
         cover: staticManual.value.thumbUrl,
         coverOriginal: staticManual.value.url,
       };
+      history.patchCover(toRaw(track), staticManual.value.thumbUrl, staticManual.value.url);
       extractColorFromUrl(staticManual.value.url);
     } else if (record) {
       media.track = {
@@ -369,6 +352,11 @@ const restoreAuto = async (): Promise<void> => {
         cover: record.originalCover ?? track.cover,
         coverOriginal: record.originalCoverOriginal ?? track.coverOriginal,
       };
+      history.patchCover(
+        toRaw(track),
+        record.originalCover ?? track.cover,
+        record.originalCoverOriginal ?? track.coverOriginal,
+      );
       extractColorFromUrl(
         record.originalCoverOriginal ?? record.originalCover ?? track.cover ?? null,
       );

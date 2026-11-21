@@ -19,6 +19,7 @@ import { clearManualMotionCover, getManualMotionCover } from "@main/database/mot
 import { clearStaticCoverManual, getStaticCoverManual } from "@main/database/staticCoverManual";
 import {
   applyStaticCover,
+  restoreStaticCover,
   searchAmStaticCovers,
   searchNcmStaticCovers,
 } from "@main/services/staticCover";
@@ -64,4 +65,5 @@ export const registerMotionCoverIpc = (): void => {
   );
   ipcMain.handle("staticCover:get", (_evt, track: Track) => getStaticCoverManual(track));
   ipcMain.handle("staticCover:clear", (_evt, track: Track) => clearStaticCoverManual(track));
+  ipcMain.handle("staticCover:restore", (_evt, track: Track) => restoreStaticCover(track));
 };
