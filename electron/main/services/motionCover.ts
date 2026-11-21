@@ -1037,6 +1037,30 @@ export const resolveMotionCoverCandidate = async (
 };
 
 /**
+ * 直接应用缓存过的动态封面地址
+ * @param track - 目标曲目
+ * @param videoUrl - 缓存记录里的视频地址
+ * @param source - 地址来源
+ * @returns 已保存的手动记录
+ */
+export const applyCachedMotionCover = (
+  track: Track,
+  videoUrl: string,
+  source: "ncm" | "am",
+): MotionCoverManualRecord => {
+  const record: MotionCoverManualRecord = {
+    source,
+    url: videoUrl,
+    originalCover: getManualMotionCover(track)?.originalCover ?? track.cover,
+    originalCoverOriginal:
+      getManualMotionCover(track)?.originalCoverOriginal ?? track.coverOriginal,
+    updatedAt: Date.now(),
+  };
+  setManualMotionCover(track, record);
+  return record;
+};
+
+/**
  * 应用手动指定的动态封面，AM 会先下载到本地缓存
  * @param track - 目标曲目
  * @param candidate - 搜索候选
@@ -1046,6 +1070,36 @@ export const applyManualMotionCover = async (
   track: Track,
   candidate: MotionCoverSearchCandidate,
 ): Promise<MotionCoverManualRecord> => {
+  // 在线搜索结果已有缓存时直接应用，避免重新解析和下载
+  const cachedKeys =
+    candidate.source === "ncm"
+      ? [`ncm|${CACHE_VERSION}|id:${candidate.id}`]
+      : [
+          candidate.storefront && candidate.trackId
+            ? `atrack|${CACHE_VERSION}|${candidate.storefront}|${candidate.trackId}`
+            : "",
+          candidate.storefront && candidate.collectionId
+            ? `collection|${CACHE_VERSION}|${candidate.storefront}|${candidate.collectionId}`
+            : "",
+        ].filter(Boolean);
+  for (const key of cachedKeys) {
+    const cached = getMotionCoverRecord(key);
+    if (!cached) continue;
+    const record: MotionCoverManualRecord = {
+      source: candidate.source,
+      url: cached,
+      title: candidate.title,
+      artist: candidate.artist,
+      album: candidate.album,
+      cover: candidate.cover,
+      originalCover: track.cover,
+      originalCoverOriginal: track.coverOriginal,
+      updatedAt: Date.now(),
+    };
+    setManualMotionCover(track, record);
+    return record;
+  }
+
   const videoUrl = await resolveMotionCoverCandidate(candidate);
   if (!videoUrl) throw new Error("该候选没有可用的动态封面");
   let url = videoUrl;

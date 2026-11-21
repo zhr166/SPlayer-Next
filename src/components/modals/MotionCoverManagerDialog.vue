@@ -262,6 +262,24 @@ const applyCandidate = async (candidate: MotionCoverSearchCandidate): Promise<vo
   }
 };
 
+const applyCachedCover = async (record: MotionCoverCacheRecord): Promise<void> => {
+  const track = currentTrack.value;
+  if (!track || !record.videoUrl) {
+    toast.error(t("motionCoverManager.noTrack"));
+    return;
+  }
+  const source = record.fingerprint.startsWith("ncm|") ? "ncm" : "am";
+  try {
+    manual.value = await window.api.motionCover.applyCached(toRaw(track), record.videoUrl, source);
+    // 缓存记录可能属于其它曲目，只同步取色，不改当前曲目的静态封面
+    if (record.track?.cover) extractColorFromUrl(record.track.cover);
+    bumpMotionCoverRevision();
+    toast.success(t("motionCoverManager.applied"));
+  } catch {
+    toast.error(t("motionCoverManager.applyFailed"));
+  }
+};
+
 const runStaticSearch = async (): Promise<void> => {
   const term = staticKeyword.value.trim();
   if (!term) return;
@@ -524,6 +542,15 @@ watch(open, (value) => {
             </div>
           </div>
 
+          <SButton
+            v-if="record.videoUrl"
+            variant="secondary"
+            size="small"
+            :disabled="!currentTrack"
+            @click="applyCachedCover(record)"
+          >
+            {{ t("motionCoverManager.apply") }}
+          </SButton>
           <SButton
             v-if="record.videoUrl"
             variant="ghost"

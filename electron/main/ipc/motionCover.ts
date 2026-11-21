@@ -4,6 +4,7 @@
 
 import { ipcMain } from "electron";
 import {
+  applyCachedMotionCover,
   applyManualMotionCover,
   resolveMotionCover,
   resolveMotionCoverCandidate,
@@ -44,6 +45,11 @@ export const registerMotionCoverIpc = (): void => {
     "motionCover:search",
     (_evt, source: MotionCoverSearchSource, keyword: string, storefront: string) =>
       source === "ncm" ? searchNcmMotionCovers(keyword) : searchAmMotionCovers(keyword, storefront),
+  );
+  ipcMain.handle(
+    "motionCover:applyCached",
+    (_evt, track: Track, videoUrl: string, source: "ncm" | "am") =>
+      applyCachedMotionCover(track, videoUrl, source),
   );
   ipcMain.handle("motionCover:preview", (_evt, candidate: MotionCoverSearchCandidate) =>
     resolveMotionCoverCandidate(candidate),

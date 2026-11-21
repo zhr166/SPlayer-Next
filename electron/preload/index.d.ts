@@ -113,6 +113,11 @@ declare global {
           keyword: string,
           storefront: string,
         ) => Promise<MotionCoverSearchCandidate[]>;
+        applyCached: (
+          track: Track,
+          videoUrl: string,
+          source: "ncm" | "am",
+        ) => Promise<MotionCoverManualRecord>;
         preview: (candidate: MotionCoverSearchCandidate) => Promise<string | null>;
         applyManual: (
           track: Track,

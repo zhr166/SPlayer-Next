@@ -781,6 +781,13 @@ const api = {
       storefront: string,
     ): Promise<MotionCoverSearchCandidate[]> =>
       ipcRenderer.invoke("motionCover:search", source, keyword, storefront),
+    // 直接应用缓存过的动态封面地址
+    applyCached: (
+      track: Track,
+      videoUrl: string,
+      source: "ncm" | "am",
+    ): Promise<MotionCoverManualRecord> =>
+      ipcRenderer.invoke("motionCover:applyCached", track, videoUrl, source),
     // 解析候选的动态封面地址
     preview: (candidate: MotionCoverSearchCandidate): Promise<string | null> =>
       ipcRenderer.invoke("motionCover:preview", candidate),
