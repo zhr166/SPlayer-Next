@@ -44,6 +44,21 @@ const hasTrack = computed(() => !!displayTrack.value);
 
 const artists = computed(() => getValidArtists(displayTrack.value?.artists));
 
+/** 曲名与歌手跑马灯的统一启动时间戳，切歌后等字体与布局稳定再同时开始 */
+const marqueeStartAt = ref(0);
+const MARQUEE_START_DELAY_MS = 1000;
+
+watch(
+  () => displayTrack.value?.id,
+  async () => {
+    marqueeStartAt.value = 0;
+    await nextTick();
+    await document.fonts?.ready.catch(() => {});
+    marqueeStartAt.value = Date.now() + MARQUEE_START_DELAY_MS;
+  },
+  { immediate: true },
+);
+
 /**
  * 生成歌手详情页跳转目标
  * @param artist - 当前歌曲的歌手
@@ -239,7 +254,10 @@ const { items: menuItems, handleSelect: onMenuSelect } = useTrackMenu(toRef(medi
     <!-- 标题与歌手 -->
     <div class="flex items-center gap-3 leading-[1.25em]">
       <div class="flex-1 min-w-0">
-        <SMarquee class="w-full min-w-0 font-medium tracking-[0.4px] text-cover/90">
+        <SMarquee
+          :start-at="marqueeStartAt"
+          class="w-full min-w-0 font-medium tracking-[0.4px] text-cover/90"
+        >
           {{ displayTrack?.title }}
           <ExplicitTag :explicit="displayTrack?.explicit" tinted class="ml-1" />
         </SMarquee>
@@ -256,7 +274,7 @@ const { items: menuItems, handleSelect: onMenuSelect } = useTrackMenu(toRef(medi
               type="button"
               class="app-no-drag flex w-full min-w-0 select-none items-baseline gap-x-1.5 appearance-none border-0 bg-transparent p-0 text-left tracking-[0.4px] text-cover/45 transition-colors hover:text-cover/70"
             >
-              <SMarquee class="w-full min-w-0">
+              <SMarquee :start-at="marqueeStartAt" class="w-full min-w-0">
                 <template v-if="artists.length">
                   <template v-for="(artist, index) in artists" :key="artist.id ?? artist.name">
                     <span v-if="index > 0" class="mr-1">,</span>

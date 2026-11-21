@@ -6,6 +6,8 @@ export interface SMarqueeProps {
   speed?: number;
   /** 开始滚动前的延迟（ms） */
   delay?: number;
+  /** 统一的绝对启动时间戳（ms），用于多个跑马灯同时开始 */
+  startAt?: number;
   /** 一轮滚动结束后在接缝处的停留时间（ms） */
   pause?: number;
   /** 两份内容之间的间隔（px） */
@@ -62,21 +64,22 @@ const syncAnimation = (): void => {
   }
   const distance = contentWidth.value + props.gap;
   if (distance <= 1) return;
-  const key = `${distance}|${props.speed}|${props.pause}|${props.delay}|${props.gap}`;
+  const key = `${distance}|${props.speed}|${props.pause}|${props.startAt ?? props.delay}|${props.gap}`;
   if (animation && animationKey === key) return;
+  const delay = props.startAt ? Math.max(0, props.startAt - Date.now()) : props.delay;
   const scrollMs = (distance / props.speed) * 1000;
   const total = scrollMs + props.pause;
   const pauseRatio = props.pause / total;
   animation?.cancel();
   animation = track.animate(buildKeyframes(distance, pauseRatio), {
     duration: total,
-    delay: props.delay,
+    delay,
     iterations: Infinity,
     easing: "linear",
     fill: "both",
   });
   animationKey = key;
-  startPhaseTracking(props.delay);
+  startPhaseTracking(delay);
 };
 
 /** 录屏实测速度曲线（归一化），用于生成位移关键帧 */
@@ -175,6 +178,12 @@ onMounted(() => {
 onUpdated(check);
 
 watch(() => settings.appearance.marqueeScroll, check);
+
+// 统一启动时间变化时重建动画，保证多个跑马灯同时开始
+watch(
+  () => props.startAt,
+  () => check(),
+);
 
 onUnmounted(() => {
   resizeObserver?.disconnect();
