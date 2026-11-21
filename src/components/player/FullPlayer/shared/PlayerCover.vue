@@ -153,7 +153,7 @@ watch([coverSrc, () => displayTrack.value?.cover], async () => {
     inAutomix &&
     settings.player.motionCoverSource !== "off" &&
     !!id &&
-    (await waitForMotion(id, MOTION_GRACE_MS));
+    (await waitForMotion(id, inAutomix ? AUTOMIX_COVER_DELAY_MS : MOTION_GRACE_MS));
   if (preferMotion) return;
   const decodes = [layer.src, layer.fallback].filter(Boolean).map((src) => {
     const image = new Image();
@@ -167,6 +167,7 @@ watch([coverSrc, () => displayTrack.value?.cover], async () => {
 });
 
 const motion = shallowRef<{ key: string; src: string } | null>(null);
+let motionRequestKey = "";
 const motionReady = ref(false);
 
 // 视频地址变化时重置就绪状态，让新视频重新淡入（动态切动态也有叠化）
@@ -212,10 +213,17 @@ watch(
         }
       }, delay);
     }
-    if (!active || source === "off" || !id || !displayTrack.value || motion.value) return;
-    const src = await window.api.motionCover.resolve(toRaw(displayTrack.value), source);
-    if (src && `${settings.player.motionCoverSource}:${displayTrack.value?.id}` === key) {
-      motion.value = { key, src };
+    if (!active || source === "off" || !id || !displayTrack.value) return;
+    // 旧视频还在播放时也要为新曲目发起解析，否则切歌后不会自动恢复动态封面
+    if (motion.value?.key === key || motionRequestKey === key) return;
+    motionRequestKey = key;
+    try {
+      const src = await window.api.motionCover.resolve(toRaw(displayTrack.value), source);
+      if (src && `${settings.player.motionCoverSource}:${displayTrack.value?.id}` === key) {
+        motion.value = { key, src };
+      }
+    } finally {
+      if (motionRequestKey === key) motionRequestKey = "";
     }
   },
   { immediate: true },
