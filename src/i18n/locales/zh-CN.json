@@ -1033,7 +1033,8 @@
     "noTrack": "请先播放一首歌",
     "staticManualActive": "已手动指定静态封面",
     "restoreOriginal": "恢复原版",
-    "staticEmpty": "搜索并选择一张静态封面"
+    "staticEmpty": "搜索并选择一张静态封面",
+    "fallbackStatic": "该版本没有动态封面，已改为应用静态封面"
   },
   "settings": {
     "title": "设置",

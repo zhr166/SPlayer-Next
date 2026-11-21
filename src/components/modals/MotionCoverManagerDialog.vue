@@ -206,8 +206,41 @@ const applyCandidate = async (candidate: MotionCoverSearchCandidate): Promise<vo
       extractColorFromUrl(candidate.cover);
     }
     toast.success(t("motionCoverManager.applied"));
-  } catch {
-    toast.error(t("motionCoverManager.applyFailed"));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (!message.includes("没有可用的动态封面")) {
+      toast.error(t("motionCoverManager.applyFailed"));
+      return;
+    }
+    // 该版本没有动态视频时退回静态封面，避免只报错
+    const cover = candidate.cover ?? "";
+    const isAm = candidate.source === "am";
+    const staticCandidate: StaticCoverSearchCandidate = {
+      id: candidate.id,
+      source: candidate.source,
+      title: candidate.title,
+      artist: candidate.artist,
+      album: candidate.album,
+      cover: isAm
+        ? cover.replace(/\/\d+x\d+bb\./, "/300x300bb.")
+        : cover.includes("?")
+          ? cover
+          : `${cover}?param=300y300`,
+      coverLarge: isAm
+        ? cover.replace(/\/\d+x\d+bb\./, "/1200x1200bb.")
+        : cover.includes("?")
+          ? cover
+          : `${cover}?param=1200y1200`,
+    };
+    try {
+      const record = await window.api.motionCover.applyStatic(toRaw(track), staticCandidate);
+      staticManual.value = record;
+      media.track = { ...toRaw(track), cover: record.thumbUrl, coverOriginal: record.url };
+      extractColorFromUrl(record.url);
+      toast.success(t("motionCoverManager.fallbackStatic"));
+    } catch {
+      toast.error(t("motionCoverManager.applyFailed"));
+    }
   } finally {
     applyingId.value = "";
   }

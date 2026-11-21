@@ -1033,7 +1033,8 @@
     "noTrack": "Play a track first",
     "staticManualActive": "Manual static cover",
     "restoreOriginal": "Restore original",
-    "staticEmpty": "Search and pick a static cover"
+    "staticEmpty": "Search and pick a static cover",
+    "fallbackStatic": "This version has no animated cover; applied as a static cover"
   },
   "settings": {
     "title": "Settings",
