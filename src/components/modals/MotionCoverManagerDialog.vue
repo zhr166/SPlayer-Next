@@ -14,6 +14,7 @@ import { useCopyText } from "@/composables/useCopyText";
 import { useMotionCoverManagerDialog } from "@/composables/useMotionCoverManagerDialog";
 import { useMediaStore } from "@/stores/media";
 import { useSettingsStore } from "@/stores/settings";
+import { extractColorFromUrl } from "@/utils/color";
 
 const { t } = useI18n();
 const { copy } = useCopyText();
@@ -201,6 +202,7 @@ const applyCandidate = async (candidate: MotionCoverSearchCandidate): Promise<vo
     manual.value = await window.api.motionCover.applyManual(toRaw(track), candidate);
     if (candidate.cover) {
       media.track = { ...toRaw(track), cover: candidate.cover, coverOriginal: candidate.cover };
+      extractColorFromUrl(candidate.cover);
     }
     toast.success(t("motionCoverManager.applied"));
   } catch {
@@ -237,6 +239,7 @@ const applyStaticCandidate = async (candidate: StaticCoverSearchCandidate): Prom
     const record = await window.api.motionCover.applyStatic(toRaw(track), candidate);
     staticManual.value = record;
     media.track = { ...toRaw(track), cover: record.thumbUrl, coverOriginal: record.url };
+    extractColorFromUrl(record.url);
     toast.success(t("motionCoverManager.applied"));
   } catch {
     toast.error(t("motionCoverManager.applyFailed"));
@@ -256,6 +259,9 @@ const restoreStaticOriginal = async (): Promise<void> => {
       cover: record?.originalCover ?? track.cover,
       coverOriginal: record?.originalCoverOriginal ?? track.coverOriginal,
     };
+    extractColorFromUrl(
+      record?.originalCoverOriginal ?? record?.originalCover ?? track.cover ?? null,
+    );
     toast.success(t("motionCoverManager.clearManualDone"));
   } catch {
     toast.error(t("motionCoverManager.applyFailed"));
@@ -276,6 +282,9 @@ const restoreAuto = async (): Promise<void> => {
         cover: record.originalCover ?? track.cover,
         coverOriginal: record.originalCoverOriginal ?? track.coverOriginal,
       };
+      extractColorFromUrl(
+        record.originalCoverOriginal ?? record.originalCover ?? track.cover ?? null,
+      );
     }
     toast.success(t("motionCoverManager.clearManualDone"));
   } catch {

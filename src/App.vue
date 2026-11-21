@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useSettingsStore } from "@/stores/settings";
 import { useMediaStore } from "@/stores/media";
+import { extractColorFromUrl } from "@/utils/color";
 
 const settings = useSettingsStore();
 const media = useMediaStore();
@@ -23,12 +24,14 @@ watch(
         cover: staticRecord.thumbUrl,
         coverOriginal: staticRecord.url,
       };
+      extractColorFromUrl(staticRecord.url);
     } else if (motionRecord?.cover) {
       media.track = {
         ...toRaw(track),
         cover: motionRecord.cover,
         coverOriginal: motionRecord.cover,
       };
+      extractColorFromUrl(motionRecord.cover);
     }
   },
   { immediate: true },
