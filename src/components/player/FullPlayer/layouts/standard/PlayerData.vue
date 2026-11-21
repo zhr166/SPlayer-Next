@@ -348,7 +348,7 @@ const alignItems = computed(() => {
       </SPopover>
     </div>
     <!-- 封面管理 -->
-    <div v-if="!simple" class="max-w-full flex items-center gap-1.5 text-[1.2em] text-cover/60">
+    <div class="max-w-full flex items-center gap-1.5 text-[1.2em] text-cover/60">
       <IconLucideClapperboard class="shrink-0 translate-y-px text-cover/40" />
       <button
         type="button"
