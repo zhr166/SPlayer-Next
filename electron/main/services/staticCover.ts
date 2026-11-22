@@ -74,22 +74,24 @@ export const searchAmStaticCovers = async (
 ): Promise<StaticCoverSearchCandidate[]> => {
   const term = keyword.trim();
   if (!term) return [];
-  // 国内商店在 iTunes Search 里经常为空，优先走 AMP 目录
-  try {
-    const songs = await searchAmSongs(term, storefront);
-    if (songs.length > 0) {
-      return songs.map((song) => ({
-        id: song.id,
-        source: "am" as const,
-        title: song.title,
-        artist: song.artist,
-        album: song.album,
-        cover: song.cover ?? "",
-        coverLarge: song.cover?.replace(/\/\d+x\d+bb\./, "/1200x1200bb.") ?? song.cover ?? "",
-      }));
+  // 仅国内商店改走 AMP，其它区维持 iTunes Search
+  if (storefront === "cn") {
+    try {
+      const songs = await searchAmSongs(term, storefront);
+      if (songs.length > 0) {
+        return songs.map((song) => ({
+          id: song.id,
+          source: "am" as const,
+          title: song.title,
+          artist: song.artist,
+          album: song.album,
+          cover: song.cover ?? "",
+          coverLarge: song.cover?.replace(/\/\d+x\d+bb\./, "/1200x1200bb.") ?? song.cover ?? "",
+        }));
+      }
+    } catch {
+      // AMP 不可用时回退 iTunes Search
     }
-  } catch {
-    // AMP 不可用时回退 iTunes Search
   }
   const url = new URL("https://itunes.apple.com/search");
   url.searchParams.set("term", term);

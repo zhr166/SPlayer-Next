@@ -978,11 +978,13 @@ export const searchAmMotionCovers = async (
 ): Promise<MotionCoverSearchCandidate[]> => {
   const term = keyword.trim();
   if (!term) return [];
-  try {
-    const songs = await searchAmSongs(term, storefront);
-    if (songs.length > 0) return songs;
-  } catch {
-    // AMP 不可用时回退 iTunes Search
+  if (storefront === "cn") {
+    try {
+      const songs = await searchAmSongs(term, storefront);
+      if (songs.length > 0) return songs;
+    } catch {
+      // AMP 不可用时回退 iTunes Search
+    }
   }
   const controller = new AbortController();
   const songs = await searchItunes(term, storefront, controller.signal);
