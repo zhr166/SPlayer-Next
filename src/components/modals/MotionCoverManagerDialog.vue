@@ -60,6 +60,7 @@ const previewingId = ref("");
 const applyingId = ref("");
 
 const storefrontOptions = [
+  { value: "cn", label: "中国大陆 (cn)" },
   { value: "us", label: "美国 (us)" },
   { value: "hk", label: "香港 (hk)" },
   { value: "tw", label: "台湾 (tw)" },

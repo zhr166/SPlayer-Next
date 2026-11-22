@@ -40,7 +40,7 @@ import type {
 } from "@shared/types/player";
 
 /** 手动解析动态封面时依次尝试的主要区 */
-const AM_VIDEO_STOREFRONTS = ["us", "gb", "hk", "tw", "jp", "sg", "ca"];
+const AM_VIDEO_STOREFRONTS = ["us", "gb", "hk", "tw", "jp", "sg", "ca", "cn"];
 
 /** 假名：日文曲目的判定依据 */
 const KANA_RE = /[\p{Script=Hiragana}\p{Script=Katakana}\u30FC\uFF66-\uFF9F]/u;
