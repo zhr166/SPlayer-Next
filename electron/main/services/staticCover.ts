@@ -75,7 +75,7 @@ export const searchAmStaticCovers = async (
   const term = keyword.trim();
   if (!term) return [];
   // 仅国内商店改走 AMP，其它区维持 iTunes Search
-  if (storefront === "cn") {
+  if (storefront === "cn" || storefront === "kr") {
     try {
       const songs = await searchAmSongs(term, storefront);
       if (songs.length > 0) {

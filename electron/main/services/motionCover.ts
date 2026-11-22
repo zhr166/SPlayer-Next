@@ -978,7 +978,7 @@ export const searchAmMotionCovers = async (
 ): Promise<MotionCoverSearchCandidate[]> => {
   const term = keyword.trim();
   if (!term) return [];
-  if (storefront === "cn") {
+  if (storefront === "cn" || storefront === "kr") {
     try {
       const songs = await searchAmSongs(term, storefront);
       if (songs.length > 0) return songs;
