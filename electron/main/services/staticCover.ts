@@ -6,6 +6,7 @@
 
 import { net } from "electron";
 import { callNetease } from "@main/apis/netease";
+import { searchAmSongs } from "@main/services/motionCover";
 import {
   clearStaticCoverManual,
   getStaticCoverManual,
@@ -73,6 +74,23 @@ export const searchAmStaticCovers = async (
 ): Promise<StaticCoverSearchCandidate[]> => {
   const term = keyword.trim();
   if (!term) return [];
+  // 国内商店在 iTunes Search 里经常为空，优先走 AMP 目录
+  try {
+    const songs = await searchAmSongs(term, storefront);
+    if (songs.length > 0) {
+      return songs.map((song) => ({
+        id: song.id,
+        source: "am" as const,
+        title: song.title,
+        artist: song.artist,
+        album: song.album,
+        cover: song.cover ?? "",
+        coverLarge: song.cover?.replace(/\/\d+x\d+bb\./, "/1200x1200bb.") ?? song.cover ?? "",
+      }));
+    }
+  } catch {
+    // AMP 不可用时回退 iTunes Search
+  }
   const url = new URL("https://itunes.apple.com/search");
   url.searchParams.set("term", term);
   url.searchParams.set("entity", "song");

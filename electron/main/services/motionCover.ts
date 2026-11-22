@@ -904,6 +904,68 @@ export const searchNcmMotionCovers = async (
   }));
 };
 
+/** AMP 歌曲搜索结果中会用到的字段 */
+interface AmpSong {
+  id?: string;
+  attributes?: {
+    name?: string;
+    artistName?: string;
+    albumName?: string;
+    durationInMillis?: number;
+    url?: string;
+    artwork?: { url?: string };
+  };
+}
+
+/**
+ * 通过 AMP 目录搜索 Apple Music 歌曲
+ * @param keyword - 搜索关键词
+ * @param storefront - 商店地区
+ * @returns 动态封面候选
+ */
+export const searchAmSongs = async (
+  keyword: string,
+  storefront: string,
+): Promise<MotionCoverSearchCandidate[]> => {
+  const term = keyword.trim();
+  if (!term) return [];
+  const controller = new AbortController();
+  const token = await getDeveloperToken();
+  const url = `https://amp-api.music.apple.com/v1/catalog/${storefront}/search?term=${encodeURIComponent(term)}&types=songs&limit=20`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}`, Origin: "https://music.apple.com" },
+    signal: controller.signal,
+  });
+  if (!res.ok) throw new Error(`AMP search ${res.status}`);
+  const body = (await res.json()) as {
+    results?: { songs?: { data?: AmpSong[] } };
+  };
+  const sized = (artwork: string | undefined, size: number): string | undefined =>
+    artwork
+      ?.replace("{w}", String(size))
+      .replace("{h}", String(size))
+      .replace(/\/\d+x\d+bb\./, `/${size}x${size}bb.`);
+  return (body.results?.songs?.data ?? [])
+    .filter((song) => song.id && song.attributes?.name)
+    .map((song) => {
+      const attrs = song.attributes ?? {};
+      const collectionId = Number(attrs.url?.match(/\/album\/[^/]+\/(\d+)/)?.[1] ?? 0);
+      return {
+        id: String(song.id),
+        source: "am" as const,
+        title: attrs.name ?? "",
+        artist: attrs.artistName ?? "",
+        album: attrs.albumName,
+        cover: sized(attrs.artwork?.url, 300),
+        duration: attrs.durationInMillis,
+        storefront,
+        collectionId:
+          Number.isSafeInteger(collectionId) && collectionId > 0 ? collectionId : undefined,
+        trackId: Number(song.id),
+      };
+    });
+};
+
 /**
  * 搜索 Apple Music 动态封面候选
  * @param keyword - 搜索关键词
@@ -916,6 +978,12 @@ export const searchAmMotionCovers = async (
 ): Promise<MotionCoverSearchCandidate[]> => {
   const term = keyword.trim();
   if (!term) return [];
+  try {
+    const songs = await searchAmSongs(term, storefront);
+    if (songs.length > 0) return songs;
+  } catch {
+    // AMP 不可用时回退 iTunes Search
+  }
   const controller = new AbortController();
   const songs = await searchItunes(term, storefront, controller.signal);
   return songs
