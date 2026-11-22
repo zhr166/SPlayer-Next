@@ -535,8 +535,19 @@ onMounted(async () => {
       "info",
       `[perf] amll probe h=${height} offset0=${Math.round(offset)} scrollTo=${summary.scrollToIndex} hot=${summary.highlighted}`,
     );
-    if (!Number.isFinite(offset) || Math.abs(offset) > height) {
-      // 越界说明首次布局基于未稳定的容器尺寸：先让核心重新测量，再按当前进度重算
+    // 在歌词区间内却没有高亮行，说明首轮布局没有建立亮度窗口
+    const now = getCurrentTime() + status.lyricOffsetMs;
+    const firstLine = processedLyrics.value[0];
+    const lastLine = processedLyrics.value[processedLyrics.value.length - 1];
+    const inLyricRange = Boolean(
+      firstLine && lastLine && now >= firstLine.startTime && now <= lastLine.endTime,
+    );
+    const needsHeal =
+      !Number.isFinite(offset) ||
+      Math.abs(offset) > height ||
+      (props.playing && inLyricRange && summary.highlighted === 0);
+    if (needsHeal) {
+      // 越界或未进入亮度窗口：先让核心重新测量，再按当前进度重算
       current.onResize();
       current.setCurrentTime(getCurrentTime() + status.lyricOffsetMs, true);
       current.calcLayout(LayoutReason.Seek);
