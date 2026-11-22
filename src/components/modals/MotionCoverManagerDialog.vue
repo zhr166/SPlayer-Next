@@ -210,6 +210,7 @@ const applyCandidate = async (candidate: MotionCoverSearchCandidate): Promise<vo
   try {
     manual.value = await window.api.motionCover.applyManual(toRaw(track), candidate);
     if (!isSameTrack(track)) return;
+    staticManual.value = null;
     // 静态封面优先级更高，已有手动静态图时只在无静态记录时更新取色
     if (!staticManual.value && candidate.cover) {
       media.track = { ...toRaw(track), cover: candidate.cover, coverOriginal: candidate.cover };

@@ -25,7 +25,7 @@ import { callNetease } from "@main/apis/netease";
 import { buildFingerprint } from "@main/database/lyricMatchCache";
 import { getMotionCoverRecord, setMotionCoverRecord } from "@main/database/motionCoverCache";
 import { getManualMotionCover, setManualMotionCover } from "@main/database/motionCoverManual";
-import { getStaticCoverManual } from "@main/database/staticCoverManual";
+import { clearStaticCoverManual, getStaticCoverManual } from "@main/database/staticCoverManual";
 import { store } from "@main/store";
 import { getMotionCoverCacheDir } from "@main/utils/config";
 import { convertTexts } from "@main/services/opencc";
@@ -1048,6 +1048,8 @@ export const applyCachedMotionCover = (
   videoUrl: string,
   source: "ncm" | "am",
 ): MotionCoverManualRecord => {
+  // 应用动态封面即切回动态，清掉此前的手动静态图
+  clearStaticCoverManual(track);
   const record: MotionCoverManualRecord = {
     source,
     url: videoUrl,
@@ -1070,6 +1072,8 @@ export const applyManualMotionCover = async (
   track: Track,
   candidate: MotionCoverSearchCandidate,
 ): Promise<MotionCoverManualRecord> => {
+  // 应用动态封面即切回动态，清掉此前的手动静态图
+  clearStaticCoverManual(track);
   // 在线搜索结果已有缓存时直接应用，避免重新解析和下载
   const cachedKeys =
     candidate.source === "ncm"
