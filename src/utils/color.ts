@@ -199,11 +199,10 @@ export const extractColorFromUrl = (url: string | null): void => {
     img.crossOrigin = "anonymous";
     img.onload = () => {
       if (token !== coverColorToken || !useSettingsStore().player.followCoverColor) return;
-      try {
-        themeStore.coverColor = extractColorFromImageElement(img);
-      } catch {
-        void loadColorFromRemote(url, token);
-      }
+      // 取色函数会把 canvas 污染吞成 null，取不到时回退主进程转发
+      const color = extractColorFromImageElement(img);
+      if (color) themeStore.coverColor = color;
+      else void loadColorFromRemote(url, token);
     };
     img.onerror = () => {
       if (token !== coverColorToken) return;
