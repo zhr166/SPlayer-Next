@@ -405,7 +405,7 @@ const playPlaylist = (item: CoverItem): void => {
     <div class="shrink-0 px-5 pb-2">
       <div class="mt-2 mb-4 flex items-end justify-between gap-4">
         <h1 class="min-w-0 flex items-baseline pr-3">
-          <span class="min-w-0 truncate text-3xl font-bold text-on-surface">
+          <span class="min-w-0 truncate text-3xl font-bold leading-[1.3] text-on-surface">
             {{ keyword || t("search.title") }}
           </span>
           <span
