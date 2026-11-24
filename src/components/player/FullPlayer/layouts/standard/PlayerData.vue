@@ -223,7 +223,7 @@ const alignItems = computed(() => {
     :class="alignItems"
   >
     <!-- 标题 -->
-    <SMarquee class="w-full text-[2em] font-semibold leading-[1.4]">
+    <SMarquee fit class="max-w-full text-[2em] font-semibold leading-[1.4]">
       {{ displayTrack.title }}
       <ExplicitTag :explicit="displayTrack.explicit" tinted class="ml-1 text-[0.6em]" />
     </SMarquee>
