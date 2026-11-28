@@ -3,6 +3,7 @@ import type { LyricData, LyricFormat, LyricInput, LyricMatchResult } from "@shar
 import { parseMainLines, verifyCandidate } from "./verify";
 import type { Platform } from "@shared/types/platform";
 import { isPlatform } from "@shared/types/platform";
+import { hasWordTiming } from "lyric-kit";
 import { detectFormat } from "@/utils/lyric/parse";
 import { useSettingsStore } from "@/stores/settings";
 import { usePluginsStore } from "@/stores/plugins";
@@ -112,8 +113,158 @@ const PLATFORM_MAIN_FORMATS: Record<Platform, LyricFormat[]> = {
   appleMusic: [],
 };
 
+/** 最佳候选被拒时最多补试的同平台候选数 */
+const FALLBACK_CANDIDATE_LIMIT = 3;
+
 /**
- * 判断在指定平台是否能拿到比本地更优的主格式
+ * 最佳候选内容不符时，补试同平台其他同名同歌手的版本
+ * @param platform - 平台
+ * @param track - 歌曲信息
+ * @param baselineLines - 验证基准
+ * @param isCurrent - 竞态检查
+ * @returns 通过验证的歌词及其主歌词行，没有则返回 null
+ */
+const resolveFallbackCandidate = async (
+  platform: Platform,
+  track: Track,
+  baselineLines: ReturnType<typeof parseMainLines>,
+  isCurrent: () => boolean,
+): Promise<{ result: OnlineResult; lines: ReturnType<typeof parseMainLines> } | null> => {
+  const keyword = [track.title, ...(track.artists ?? []).map((artist) => artist.name)].join(" ");
+  const resp = await window.api.lyrics.searchCandidates(platform, keyword, track);
+  if (!resp.ok || !isCurrent()) return null;
+  const title = track.title.toLowerCase();
+  const candidates = resp.data
+    .filter(
+      (candidate) =>
+        !candidate.best &&
+        candidate.tags.includes("artist") &&
+        candidate.name.toLowerCase().includes(title),
+    )
+    .slice(0, FALLBACK_CANDIDATE_LIMIT);
+  for (const candidate of candidates) {
+    const result = await requestPlatformMatch(track, platform, candidate);
+    if (!isCurrent()) return null;
+    const lines = result ? parseMainLines(result.source.format, result.input.content) : [];
+    if (!result || lines.length === 0) continue;
+    const accepted = await verifyCandidate(baselineLines, lines, result, track);
+    if (!isCurrent()) return null;
+    if (accepted) {
+      void window.api.lyrics.rememberMatch(track, platform, candidate.id);
+      return { result: accepted, lines };
+    }
+  }
+  return null;
+};
+
+interface ResolvedOnlineOptions {
+  /** 已有的本地或服务端歌词，作为候选的验证基准 */
+  local?: ResolvedLyric | null;
+  onCandidate?: (result: OnlineResult) => void;
+  shouldContinue?: () => boolean;
+  forceQuery?: boolean;
+  /** 后台场景逐个请求，结果已无法被超越时不再请求后续平台 */
+  sequential?: boolean;
+}
+
+/**
+ * 以歌曲自身平台或已有歌词为基准，从其余平台选出通过验证的最优歌词
+ * @param track - 歌曲信息
+ * @param platforms - 参与请求的平台
+ * @param options - 基准歌词与请求选项
+ * @returns 最优在线歌词，没有比已有歌词更优的结果时为 null
+ */
+const resolveVerifiedOnline = async (
+  track: Track,
+  platforms: Platform[],
+  options: ResolvedOnlineOptions,
+): Promise<OnlineResult | null> => {
+  const isCurrent = options.shouldContinue ?? (() => true);
+  const formatOrder = useSettingsStore().lyric.lyricFormatOrder ?? DEFAULT_LYRIC_FORMAT_ORDER;
+  const formatRank = (format: LyricFormat): number => {
+    const index = formatOrder.indexOf(format);
+    return index === -1 ? Infinity : index;
+  };
+
+  const ownPlatform = platforms.find((platform) => platform === track.source);
+  const others = platforms.filter((platform) => platform !== ownPlatform);
+  const requests = new Map(
+    options.sequential
+      ? []
+      : others.map(
+          (platform) =>
+            [platform, resolvePlatformLyric(platform, track, options.forceQuery)] as const,
+        ),
+  );
+  const own = ownPlatform
+    ? await resolvePlatformLyric(ownPlatform, track, options.forceQuery)
+    : null;
+  if (!isCurrent()) return null;
+  if (own) options.onCandidate?.(own);
+
+  const baseline = options.local ?? own;
+  const baselineLines = baseline
+    ? parseMainLines(baseline.source.format, baseline.input.content)
+    : [];
+  const hasBaseline = baseline !== null && baselineLines.length > 0;
+  let best = own;
+  let bestRank = hasBaseline ? formatRank(baseline.source.format) : Infinity;
+  let committed = own;
+  const pending = new Set(others);
+  const canBeatBest = (platform: Platform): boolean =>
+    PLATFORM_MAIN_FORMATS[platform].some((format) => formatRank(format) < bestRank);
+
+  const evaluate = async (platform: Platform): Promise<void> => {
+    const result = await (requests.get(platform) ??
+      resolvePlatformLyric(platform, track, options.forceQuery));
+    if (!isCurrent()) return;
+    if (result) {
+      const lines = parseMainLines(result.source.format, result.input.content);
+      const rankOf = (lyricLines: typeof lines, format: LyricFormat): number =>
+        formatRank(hasWordTiming(lyricLines as never[]) ? format : "lrc");
+      const rank = rankOf(lines, result.source.format);
+      if (lines.length > 0 && rank < bestRank) {
+        let accepted: OnlineResult | null = hasBaseline
+          ? await verifyCandidate(baselineLines, lines, result, track)
+          : result;
+        let acceptedRank = rank;
+        if (!isCurrent()) return;
+        if (!accepted && hasBaseline) {
+          const fallback = await resolveFallbackCandidate(
+            platform,
+            track,
+            baselineLines,
+            isCurrent,
+          );
+          if (!isCurrent()) return;
+          accepted = fallback?.result ?? null;
+          acceptedRank = fallback ? rankOf(fallback.lines, fallback.result.source.format) : rank;
+        }
+        if (accepted && acceptedRank < bestRank) {
+          best = accepted;
+          bestRank = acceptedRank;
+        }
+      }
+    }
+    pending.delete(platform);
+    if (best && best !== committed && (!hasBaseline || ![...pending].some(canBeatBest))) {
+      committed = best;
+      options.onCandidate?.(best);
+    }
+  };
+
+  if (options.sequential) {
+    for (const platform of others) {
+      if (!isCurrent()) return null;
+      if (canBeatBest(platform)) await evaluate(platform);
+    }
+  } else {
+    await Promise.all(others.map(evaluate));
+  }
+  return isCurrent() ? best : null;
+};
+
+/** 判断在指定平台是否能拿到比本地更优的主格式
  * @param platform - 平台
  * @param localFormat - 本地格式
  * @param formatOrder - 格式优先级
@@ -213,54 +364,8 @@ export const resolveOnlineByPreference = async (
     `resolveOnlineByPreference: preference=${preference}, smartPreferOnline=${settings.lyric.smartPreferOnline}, candidates=${candidates.join(",")}`,
   );
 
-  // 智能选择：比较全部候选后按格式优先级取最优
-  if (settings.lyric.smartPreferOnline) {
-    let best: OnlineResult | null = null;
-    const rankOf = (result: OnlineResult): number => {
-      const idx = formatOrder.indexOf(result.source.format);
-      return idx === -1 ? Infinity : idx;
-    };
-    const isBetter = (candidate: OnlineResult, current: OnlineResult | null): boolean => {
-      if (!current) return true;
-      return rankOf(candidate) < rankOf(current);
-    };
-    const baselineLines = options.local
-      ? parseMainLines(options.local.source.format, options.local.input.content)
-      : [];
-    await Promise.all(
-      candidates.map(async (platform) => {
-        const result = await resolvePlatformLyric(platform, track, options.forceQuery);
-        if (!isCurrent()) return;
-        if (!result) {
-          logLyric("info", `  ${platform}: miss`);
-          return;
-        }
-        let accepted: OnlineResult | null = result;
-        if (baselineLines.length > 0) {
-          const candidateLines = parseMainLines(result.source.format, result.input.content);
-          accepted = candidateLines.length
-            ? await verifyCandidate(baselineLines, candidateLines, result, track)
-            : null;
-          if (!isCurrent()) return;
-          if (!accepted) {
-            logLyric("info", `  ${platform}: hit ${result.source.format} 但版本校验未通过`);
-            return;
-          }
-        }
-        logLyric("info", `  ${platform}: hit ${result.source.format} rank=${rankOf(accepted)}`);
-        if (isBetter(accepted, best)) {
-          best = accepted;
-          options.onCandidate?.(accepted);
-        }
-      }),
-    );
-    const chosen = best as OnlineResult | null;
-    logLyric(
-      "info",
-      `  best=${chosen ? `${chosen.source.platform}:${chosen.source.format}` : "null"}`,
-    );
-    return isCurrent() ? best : null;
-  }
+  // 智能选择：验证候选并在无法被超越时提交
+  if (settings.lyric.smartPreferOnline) return resolveVerifiedOnline(track, candidates, options);
 
   const baselineLines = options.local
     ? parseMainLines(options.local.source.format, options.local.input.content)
