@@ -238,3 +238,11 @@ Browser/GPU/Tab 工作集分别约为 102/94/93 MB 与 102/98/93 MB；
 4. 运行 `vue-tsc` 与 `electron-vite build`
 
 补丁路径基于重写后的 vendor 源码；升级内核时若 hunk 冲突，按 `amll-hooks.md` 的钩子协议重做补丁并更新文件名版本号。
+
+## 2026-11-28 同步 fork main
+
+- 同步 `zhr166/applemusic-like-lyrics` main 至 `33c1a19`
+- 保留 0.7.2 的六个私有 hook，补丁按新内核源码重新生成
+- 新内核带来非 CJK 字素簇拆分、禁用行强调动画回落等修复
+- `patches/amll-private-hooks-0.7.2.patch` 已用新内核校验可正向应用
+- `vue-tsc`、`electron-vite build` 通过，未打包

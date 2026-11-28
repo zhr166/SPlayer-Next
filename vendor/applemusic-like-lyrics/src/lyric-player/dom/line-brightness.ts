@@ -350,11 +350,10 @@ export class LineBrightness implements Disposable {
 	 * 2. 切换 CSS 类名，使 `opacity` 目标值发生变更时因缺失过渡定义而跳过过渡动画。
 	 * 3. 等该变更完成一次样式重算后，再恢复 `transition` 定义。
 	 *
-	 * 恢复必须推迟到「类名切换已被样式重算提交之后」的那一帧之后，单次 `requestAnimationFrame` 不够：
-	 * 类名切换可能发生在 rAF 之外的普通任务里（宿主由事件回调直接推送播放进度时就是如此），
-	 * 此时下一帧的执行顺序是「rAF 回调（恢复 transition）→ 样式重算」，恢复先于提交发生，
-	 * 过渡定义已经回来了，切换照样会带动画 —— 表现就是刚进入窗口的行先过亮再暗回去。
-	 * 因此这里连续推迟两帧：第一帧让切换在抑制状态下完成样式重算，再下一帧才恢复。
+	 * 恢复必须等到类名切换已被样式重算提交之后。单次 `requestAnimationFrame` 不够：
+	 * 宿主要是从事件回调里直接推送播放进度，切换就发生在 rAF 之外，下一帧的顺序会是
+	 * 「rAF 回调（恢复 transition）→ 样式重算」，恢复反倒先于提交，过渡定义已经回来，
+	 * 切换照样带动画，表现就是刚进入窗口的行先过亮再暗回去。所以连续推迟两帧。
 	 * @param enabled 是否开启亮层形态
 	 */
 	private setMainBright(enabled: boolean): void {

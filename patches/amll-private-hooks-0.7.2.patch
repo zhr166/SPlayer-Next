@@ -1,6 +1,6 @@
 --- a/vendor/applemusic-like-lyrics/src/lyric-player/dom/lyric-line.ts
 +++ b/vendor/applemusic-like-lyrics/src/lyric-player/dom/lyric-line.ts
-@@ -23,6 +23,8 @@
+@@ -26,6 +26,8 @@
  
  interface RealWord extends LyricWord {
  	mainElement: HTMLSpanElement;
@@ -9,7 +9,7 @@
  	subElements: HTMLSpanElement[];
  	elementAnimations: Animation[];
  	width: number;
-@@ -39,7 +41,7 @@
+@@ -42,7 +44,7 @@
  	private enableTextAutospace = false;
  
  	private renderMode: LyricLineRenderMode = LyricLineRenderMode.SOLID;
@@ -18,7 +18,7 @@
  	/**
  	 * 亮层与均匀副本
  	 *
-@@ -78,9 +80,7 @@
+@@ -81,9 +83,7 @@
  		},
  	) {
  		super();
@@ -29,7 +29,7 @@
  		this.lineHasRomanWords = this.lyricLine.words.some(
  			(word) => (word.romanWord?.trim().length ?? 0) > 0,
  		);
-@@ -100,10 +100,7 @@
+@@ -103,10 +103,7 @@
  		const roman = this.element.children[2] as HTMLDivElement;
  		main.setAttribute("class", styles.lyricMainLine);
  		main.dataset.amllRole = "main";
@@ -41,7 +41,7 @@
  		trans.setAttribute("class", styles.lyricSubLine);
  		trans.dataset.amllRole = "translation";
  		roman.setAttribute("class", styles.lyricSubLine);
-@@ -124,9 +121,7 @@
+@@ -127,9 +124,7 @@
  		this.element.classList.add(styles.active);
  		const main = this.element.children[0] as HTMLDivElement;
  
@@ -52,7 +52,7 @@
  
  		for (const word of this.splittedWords) {
  			for (const a of word.elementAnimations) {
-@@ -134,14 +129,13 @@
+@@ -137,14 +132,13 @@
  				a.playbackRate = 1;
  
  				const timing = a.effect?.getComputedTiming();
@@ -69,18 +69,7 @@
  
  		main.classList.add(styles.active);
  	}
-@@ -155,17 +149,14 @@
- 
- 		for (const word of this.splittedWords) {
- 			for (const a of word.elementAnimations) {
--				if (
--					a.id === "float-word" ||
--					a.id.includes("emphasize-word-float-only")
--				) {
-+				if (a.id === "float-word" || a.id.includes("emphasize-word-float-only")) {
- 					a.playbackRate = -1;
- 					a.play();
- 				}
+@@ -189,7 +183,7 @@
  			}
  		}
  
@@ -89,7 +78,7 @@
  		main.classList.remove(styles.active);
  	}
  
-@@ -177,21 +168,15 @@
+@@ -201,21 +195,15 @@
  			for (const a of word.elementAnimations) {
  				if (
  					!this.lastWord ||
@@ -115,7 +104,7 @@
  	}
  
  	async pause(): Promise<void> {
-@@ -201,7 +186,7 @@
+@@ -225,7 +213,7 @@
  				a.pause();
  			}
  		}
@@ -124,7 +113,7 @@
  	}
  
  	getLine(): LyricLine {
-@@ -213,7 +198,7 @@
+@@ -237,7 +225,7 @@
  		if (!this.built) {
  			this.rebuildElement();
  			this.built = true;
@@ -133,7 +122,7 @@
  			// 遮罩曾随元素重建而释放，重新进入渲染范围时需重新构建
  			this.updateMaskImageSync();
  		}
-@@ -255,7 +240,11 @@
+@@ -279,7 +267,11 @@
  			return;
  		}
  
@@ -146,7 +135,7 @@
  		main.innerHTML = "";
  
  		let previousText = "";
-@@ -284,16 +273,11 @@
+@@ -308,16 +300,11 @@
  	}
  
  	private getRubyCharCount(word: LyricWord) {
@@ -165,7 +154,7 @@
  	}
  
  	private createWord(
-@@ -304,9 +288,20 @@
+@@ -328,9 +315,20 @@
  		const mainWordEl = document.createElement("span");
  		const subElements: HTMLSpanElement[] = [];
  		const romanWord = word.romanWord?.trim() ?? "";
@@ -189,7 +178,7 @@
  		const wordTextContainer = this.lineHasRubyWords
  			? document.createElement("span")
  			: wordContainer;
-@@ -326,8 +321,8 @@
+@@ -350,8 +348,8 @@
  			wordContainer.classList.add(styles.wordBody);
  			wordTextContainer.classList.add(styles.rubyBaseWord);
  			wordContainer.appendChild(wordTextContainer);
@@ -200,7 +189,7 @@
  		}
  
  		const displayWord = word.word;
-@@ -336,9 +331,7 @@
+@@ -360,9 +358,7 @@
  			mainWordEl.classList.add(styles.emphasize);
  			const trimmedWord = displayWord.trim();
  
@@ -211,7 +200,7 @@
  			for (const { segment, index } of textGraphemes(trimmedWord)) {
  				const charEl = document.createElement("span");
  				charEl.textContent = segment;
-@@ -351,12 +344,7 @@
+@@ -375,12 +371,7 @@
  		} else {
  			if (this.lineHasRomanWords) {
  				const wordEl = document.createElement("span");
@@ -225,7 +214,7 @@
  				wordTextContainer.appendChild(wordEl);
  			} else if (romanWord.length === 0) {
  				appendTextWithAutospace(
-@@ -368,16 +356,26 @@
+@@ -392,16 +383,26 @@
  			}
  		}
  
@@ -254,7 +243,7 @@
  			subElements: subElements,
  			elementAnimations: shouldEmphasize
  				? []
-@@ -386,6 +384,20 @@
+@@ -410,6 +411,20 @@
  							word: floatWord,
  							lineStartTime: this.lyricLine.startTime,
  							isBG: this.lyricLine.isBG,
@@ -275,7 +264,7 @@
  						}),
  					],
  			width: 0,
-@@ -429,16 +441,22 @@
+@@ -453,16 +468,22 @@
  			} as LyricWord,
  		);
  
@@ -305,7 +294,7 @@
  			wrapperWordEl.classList.add(styles.textAutospaceBefore);
  		}
  
-@@ -453,10 +471,7 @@
+@@ -477,10 +498,7 @@
  			}
  
  			const realWord = this.createWord(word, emp, emp ? merged : word);
@@ -317,7 +306,7 @@
  				realWord.mainElement.classList.add(styles.textAutospaceBefore);
  			}
  			previousWord = word.word;
-@@ -471,15 +486,11 @@
+@@ -495,15 +513,11 @@
  
  		if (emp && this.splittedWords.length > 0) {
  			const lastWordOfChunk = this.splittedWords[this.splittedWords.length - 1];
@@ -335,7 +324,7 @@
  
  			lastWordOfChunk.elementAnimations.push(
  				...createEmphasizeAnimation({
-@@ -500,7 +511,7 @@
+@@ -524,7 +538,7 @@
  
  	override onLineSizeChange(size: [number, number]): void {
  		if (
@@ -344,7 +333,7 @@
  			this.lastLineSize &&
  			this.lastLineSize[0] === size[0] &&
  			this.lastLineSize[1] === size[1]
-@@ -508,8 +519,7 @@
+@@ -532,8 +546,7 @@
  			return;
  		}
  
@@ -354,7 +343,7 @@
  		this.lastLineSize = [size[0], size[1]];
  
  		if (isInitialObservation) {
-@@ -523,9 +533,7 @@
+@@ -547,9 +560,7 @@
  		if (words.length === 0) return;
  
  		const firstEl = words[0].mainElement;
@@ -365,7 +354,7 @@
  
  		for (const word of words) {
  			const el = word.mainElement;
-@@ -545,13 +553,18 @@
+@@ -569,13 +580,18 @@
  	 * @param containerWidth 换行平衡所使用的容器可用宽度
  	 * @param maxEndTime 遮罩动画时间轴的结束时间
  	 */
@@ -389,7 +378,7 @@
  		for (const word of this.splittedWords) {
  			signature += `|${word.width},${word.height},${word.padding}`;
  		}
-@@ -589,7 +602,7 @@
+@@ -613,7 +629,7 @@
  
  		// 若输入未发生变更，则直接复用现有动画。由于销毁并重建逐词动画是该调用路径上性能开销最高的操作，
  		// 且首次显示后的尺寸监听回调所传入的参数与初次完全相同，因此复用机制可避免不必要的重建。
@@ -398,7 +387,7 @@
  		this.maskSignature = signature;
  
  		if (this.balancer && LyricLineBase.wordSegmenter) {
-@@ -601,16 +614,88 @@
+@@ -625,16 +641,88 @@
  			);
  		}
  
@@ -493,7 +482,7 @@
  		this.brightness.sync(true);
  
  		if (this.isEnabled) {
-@@ -634,10 +719,7 @@
+@@ -658,10 +746,7 @@
  		}
  
  		this.renderMode = mode;
@@ -505,7 +494,7 @@
  	}
  
  	override setTransform(
-@@ -704,8 +786,8 @@
+@@ -728,8 +813,8 @@
  	 * 此时无法立刻测量出有效几何信息，只能待元素重新回到文档后重建。
  	 */
  	private invalidateMask(): void {
@@ -555,7 +544,7 @@
 +}
 --- a/vendor/applemusic-like-lyrics/src/utils/lyric-split-words.ts
 +++ b/vendor/applemusic-like-lyrics/src/utils/lyric-split-words.ts
-@@ -15,15 +15,14 @@
+@@ -43,15 +43,14 @@
   */
  export function chunkAndSplitLyricWords(
  	words: LyricWord[],
@@ -573,7 +562,7 @@
  			currentGroup = [];
  		}
  	};
-@@ -89,6 +88,24 @@
+@@ -117,6 +116,24 @@
  			continue;
  		}
  
@@ -598,7 +587,7 @@
  		const parts = w.word.split(SPLIT_WHITESPACE_RE).filter((p) => p.length > 0);
  
  		const totalLength = w.word.replace(WHITESPACE_RE, "").length || 1;
-@@ -101,11 +118,8 @@
+@@ -129,11 +146,8 @@
  			.filter((p) => p.length > 0);
  		const romanTrimmed = romanWord.trim();
  		const romanParts =
