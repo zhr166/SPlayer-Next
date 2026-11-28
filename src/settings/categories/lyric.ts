@@ -49,7 +49,7 @@ const lyricCategory: SettingCategory = {
               key: "smartPreferOnline",
               type: "switch",
               binding: { store: "settings", path: "lyric.smartPreferOnline" },
-              defaultValue: false,
+              defaultValue: true,
             },
           ],
         },

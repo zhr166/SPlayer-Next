@@ -25,12 +25,14 @@ import {
 /** 下载用歌词 */
 export interface DownloadLyric extends LyricInput {
   format: LyricFormat;
+  timeShiftMs?: number;
 }
 
 /** 转为下载歌词结构 */
 const toDownloadLyric = (lyric: ResolvedLyric): DownloadLyric =>
   ({
     format: lyric.source.format,
+    timeShiftMs: lyric.source.timeShiftMs,
     ...lyric.input,
   }) as DownloadLyric;
 
